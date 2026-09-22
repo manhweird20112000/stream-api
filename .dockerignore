@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.git
+.idea
+.pnpm-store
+coverage
+dist
+logs
+node_modules
+storages
+npm-debug.log*
+pnpm-debug.log*
