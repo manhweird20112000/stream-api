@@ -13,10 +13,10 @@ export function createMikroOrmConfig({ POSTGRES_URI }: DatabaseSecrets) {
     driver: PostgreSqlDriver,
     clientUrl: POSTGRES_URI,
     entities: [
-      'dist/modules/**/infrastructure/persistence/entities/**/*.entity.js',
+      'dist/modules/**/infrastructure/persistence/entities/**/*.orm-entity.js',
     ],
     entitiesTs: [
-      'src/modules/**/infrastructure/persistence/entities/**/*.entity.ts',
+      'src/modules/**/infrastructure/persistence/entities/**/*.orm-entity.ts',
     ],
     discovery: {
       warnWhenNoEntities: false,

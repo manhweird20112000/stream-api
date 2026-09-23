@@ -14,10 +14,10 @@ module.exports = defineConfig({
   driver: PostgreSqlDriver,
   clientUrl: postgresUri,
   entities: [
-    'dist/modules/**/infrastructure/persistence/entities/**/*.entity.js',
+    'dist/modules/**/infrastructure/persistence/entities/**/*.orm-entity.js',
   ],
   entitiesTs: [
-    'src/modules/**/infrastructure/persistence/entities/**/*.entity.ts',
+    'src/modules/**/infrastructure/persistence/entities/**/*.orm-entity.ts',
   ],
   discovery: {
     warnWhenNoEntities: false,
