@@ -32,14 +32,18 @@ import { JwtAuthGuard } from './presentation/http/guards/jwt-auth.guard';
     {
       provide: UploadFileUseCase,
       inject: [StoredFileRepository, FileStoragePort],
-      useFactory: (repository: StoredFileRepository, storage: FileStoragePort) =>
-        new UploadFileUseCase(repository, storage),
+      useFactory: (
+        repository: StoredFileRepository,
+        storage: FileStoragePort,
+      ) => new UploadFileUseCase(repository, storage),
     },
     {
       provide: GetPrivateFileUseCase,
       inject: [StoredFileRepository, FileStoragePort],
-      useFactory: (repository: StoredFileRepository, storage: FileStoragePort) =>
-        new GetPrivateFileUseCase(repository, storage),
+      useFactory: (
+        repository: StoredFileRepository,
+        storage: FileStoragePort,
+      ) => new GetPrivateFileUseCase(repository, storage),
     },
   ],
 })

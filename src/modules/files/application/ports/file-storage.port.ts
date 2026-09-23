@@ -19,8 +19,5 @@ export abstract class FileStoragePort {
     visibility: FileVisibility,
     filename: string,
   ): Promise<OpenFileResult>;
-  abstract remove(
-    visibility: FileVisibility,
-    filename: string,
-  ): Promise<void>;
+  abstract remove(visibility: FileVisibility, filename: string): Promise<void>;
 }

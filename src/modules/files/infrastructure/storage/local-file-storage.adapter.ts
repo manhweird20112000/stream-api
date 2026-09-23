@@ -20,7 +20,10 @@ export class LocalFileStorageAdapter implements FileStoragePort {
 
   async store(input: StoreFileInput): Promise<string> {
     const accepted = ['image/jpeg', 'image/png'];
-    if (!accepted.includes(input.mimetype) || input.buffer.length > 1024 * 1024) {
+    if (
+      !accepted.includes(input.mimetype) ||
+      input.buffer.length > 1024 * 1024
+    ) {
       throw new Error(
         input.buffer.length > 1024 * 1024
           ? 'Image exceeds maximum size'
@@ -37,7 +40,9 @@ export class LocalFileStorageAdapter implements FileStoragePort {
     const directory = path.join(this.basePath, input.visibility);
     await mkdir(directory, { recursive: true });
     const filename = `${uuidv7()}.webp`;
-    await sharp(input.buffer).webp({ quality: 80 }).toFile(path.join(directory, filename));
+    await sharp(input.buffer)
+      .webp({ quality: 80 })
+      .toFile(path.join(directory, filename));
     return filename;
   }
 
@@ -62,7 +67,11 @@ export class LocalFileStorageAdapter implements FileStoragePort {
   }
 
   private resolvePath(visibility: FileVisibility, filename: string): string {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/i.test(filename)) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/i.test(
+        filename,
+      )
+    ) {
       throw new Error('File not found');
     }
     return path.join(this.basePath, visibility, filename);

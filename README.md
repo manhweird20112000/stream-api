@@ -124,12 +124,12 @@ Presentation --------> Application --------> Domain
 Infrastructure ------> Application --------> Domain
 ```
 
-| Layer | Responsibility | Allowed dependencies |
-| --- | --- | --- |
-| Domain | Entities, value objects, business errors, repository contracts | Framework-neutral code |
-| Application | Use cases, input/output types, outbound ports | Domain and framework-neutral shared code |
-| Infrastructure | MikroORM repositories, persistence mapping, filesystem, Sharp, external services | Application and Domain |
-| Presentation | NestJS controllers, guards, request validation, HTTP mapping | Application and Domain |
+| Layer          | Responsibility                                                                   | Allowed dependencies                     |
+| -------------- | -------------------------------------------------------------------------------- | ---------------------------------------- |
+| Domain         | Entities, value objects, business errors, repository contracts                   | Framework-neutral code                   |
+| Application    | Use cases, input/output types, outbound ports                                    | Domain and framework-neutral shared code |
+| Infrastructure | MikroORM repositories, persistence mapping, filesystem, Sharp, external services | Application and Domain                   |
+| Presentation   | NestJS controllers, guards, request validation, HTTP mapping                     | Application and Domain                   |
 
 The following imports are prohibited inside `domain` and `application`:
 
@@ -184,10 +184,10 @@ Public files are served from `/assets`. Private files require a valid JWT and
 are returned only to their owner. Missing, public, and foreign private files all
 produce the same not-found response to avoid revealing private metadata.
 
-| Method | Route | Authentication | Purpose |
-| --- | --- | --- | --- |
-| `POST` | `/api/files` | Bearer JWT | Upload a PNG or JPEG as public or private |
-| `GET` | `/api/files/:id` | Bearer JWT | Read a private image owned by the caller |
+| Method | Route            | Authentication | Purpose                                   |
+| ------ | ---------------- | -------------- | ----------------------------------------- |
+| `POST` | `/api/files`     | Bearer JWT     | Upload a PNG or JPEG as public or private |
+| `GET`  | `/api/files/:id` | Bearer JWT     | Read a private image owned by the caller  |
 
 Uploads are limited to 1 MiB and stored as WebP. If metadata persistence fails,
 the use case attempts to remove the written file before returning the original

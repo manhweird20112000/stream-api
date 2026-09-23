@@ -50,7 +50,11 @@ export class FileController {
     } catch (error) {
       if (
         error instanceof Error &&
-        ['Invalid file visibility', 'Unsupported image type', 'Image exceeds maximum size'].includes(error.message)
+        [
+          'Invalid file visibility',
+          'Unsupported image type',
+          'Image exceeds maximum size',
+        ].includes(error.message)
       ) {
         throw new BadRequestException(error.message);
       }
@@ -74,7 +78,10 @@ export class FileController {
         length: file.contentLength,
       });
     } catch (error) {
-      if (error instanceof FileNotFoundError || (error instanceof Error && error.message === 'File not found')) {
+      if (
+        error instanceof FileNotFoundError ||
+        (error instanceof Error && error.message === 'File not found')
+      ) {
         throw new NotFoundException('File not found');
       }
       throw error;

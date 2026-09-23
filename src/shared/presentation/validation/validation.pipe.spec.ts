@@ -25,7 +25,10 @@ describe('ValidationPipe', () => {
     const metadata: ArgumentMetadata = { type: 'query', metatype: QueryDto };
 
     await expect(
-      new ValidationPipe().transform({ page: '2', unexpected: 'value' }, metadata),
+      new ValidationPipe().transform(
+        { page: '2', unexpected: 'value' },
+        metadata,
+      ),
     ).rejects.toThrow();
   });
 });

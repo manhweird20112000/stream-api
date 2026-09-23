@@ -44,10 +44,12 @@ describe('GetPrivateFileUseCase', () => {
       filename: '0196d7fa-9752-7048-baf4-de9c43877a67.webp',
     });
 
-    const result = await new GetPrivateFileUseCase(repository, storage).execute({
-      id: 'file-id',
-      userId: 'user-a',
-    });
+    const result = await new GetPrivateFileUseCase(repository, storage).execute(
+      {
+        id: 'file-id',
+        userId: 'user-a',
+      },
+    );
 
     expect(result.contentType).toBe('image/webp');
     expect(storage.opened).toEqual({
@@ -58,8 +60,18 @@ describe('GetPrivateFileUseCase', () => {
 
   it.each([
     null,
-    StoredFile.restore({ id: 'file-id', ownerId: 'user-b', visibility: 'private', filename: 'file.webp' }),
-    StoredFile.restore({ id: 'file-id', ownerId: 'user-a', visibility: 'public', filename: 'file.webp' }),
+    StoredFile.restore({
+      id: 'file-id',
+      ownerId: 'user-b',
+      visibility: 'private',
+      filename: 'file.webp',
+    }),
+    StoredFile.restore({
+      id: 'file-id',
+      ownerId: 'user-a',
+      visibility: 'public',
+      filename: 'file.webp',
+    }),
   ])('hides missing or inaccessible metadata', async (file) => {
     const repository = new RepositoryFake();
     repository.file = file;

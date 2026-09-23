@@ -24,7 +24,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException &&
       status === HttpStatus.BAD_REQUEST &&
       typeof exception.getResponse() === 'object'
-        ? (exception.getResponse() as { data?: unknown }).data ?? null
+        ? ((exception.getResponse() as { data?: unknown }).data ?? null)
         : null;
 
     const errorResp = {
