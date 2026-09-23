@@ -5,6 +5,10 @@ export class SecretService extends ConfigService implements IAdapterSecret {
   APP_NAME = this.required('APP_NAME');
   APP_PORT = this.readPort();
 
+  KAFKA_BROKERS = this.readList('KAFKA_BROKERS');
+  KAFKA_CLIENT_ID = this.required('KAFKA_CLIENT_ID');
+  KAFKA_GROUP_ID = this.required('KAFKA_GROUP_ID');
+
   POSTGRES_URI = `postgres://${this.required('DB_USER')}:${this.required(
     'DB_PASSWORD',
   )}@${this.required('DB_HOST')}:${this.required('DB_PORT')}/${this.required('DB_NAME')}`;
@@ -14,12 +18,23 @@ export class SecretService extends ConfigService implements IAdapterSecret {
   JWT_SECRET = this.required('JWT_SECRET');
   TOKEN_EXPIRATION = this.required('TOKEN_EXPIRATION');
 
-  STRIPE_API_KEY = this.get('STRIPE_API_KEY');
-
   private required(name: string): string {
     const value = this.get<string>(name);
     if (!value) throw new Error(`${name} is required`);
     return value;
+  }
+
+  private readList(name: string): string[] {
+    const values = this.required(name)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (values.length === 0) {
+      throw new Error(`${name} is required`);
+    }
+
+    return values;
   }
 
   private readPort(): number {
