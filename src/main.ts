@@ -12,6 +12,8 @@ import { ValidationPipe } from '@/shared/presentation/validation/validation.pipe
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.enableShutdownHooks();
+
   app.use(compression({ level: 1 }));
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });

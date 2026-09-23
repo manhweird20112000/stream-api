@@ -8,6 +8,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import * as path from 'node:path';
 import { AppController } from './app.controller';
 import { DebugController } from './debug.controller';
+import { HealthModule } from '@/infrastructure/health/health.module';
 
 const controllers =
   process.env.NODE_ENV === 'development' &&
@@ -30,6 +31,7 @@ const controllers =
     WinstonModule.forRoot(winstonConfig),
     SecretModule,
     DatabaseModule,
+    HealthModule,
     ContainerModules,
   ],
   controllers,
