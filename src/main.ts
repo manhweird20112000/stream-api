@@ -1,13 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
-import { HttpExceptionFilter } from '@/shared/filters/http-exception.filter';
-import { HttpSuccessInterceptor } from '@/shared/interceptors/http-success.interceptor';
+import { HttpExceptionFilter } from '@/shared/presentation/filters/http-exception.filter';
+import { HttpSuccessInterceptor } from '@/shared/presentation/interceptors/http-success.interceptor';
 import { RequestMethod, VersioningType } from '@nestjs/common';
-import { IAdapterSecret } from '@/infra/secret/adapter';
+import { IAdapterSecret } from '@/infrastructure/secret/adapter';
 import { useContainer } from 'class-validator';
 import compression from 'compression';
-import { ValidationPipe } from '@/shared/validation/validation.pipe';
+import { ValidationPipe } from '@/shared/presentation/validation/validation.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

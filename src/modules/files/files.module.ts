@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { SecretModule } from '@/infra/secret';
-import { IAdapterSecret } from '@/infra/secret/adapter';
+import { SecretModule } from '@/infrastructure/secret';
+import { IAdapterSecret } from '@/infrastructure/secret/adapter';
 import { FileStoragePort } from './application/ports/file-storage.port';
 import { GetPrivateFileUseCase } from './application/use-cases/get-private-file.use-case';
 import { UploadFileUseCase } from './application/use-cases/upload-file.use-case';

@@ -4,9 +4,9 @@ import {
   type MikroOrmModuleAsyncOptions,
 } from '@mikro-orm/nestjs';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
-import { SecretModule } from '@/infra/secret';
-import { IAdapterSecret } from '@/infra/secret/adapter';
-import { createMikroOrmConfig } from '@/infra/config/database.config';
+import { SecretModule } from '@/infrastructure/secret';
+import { IAdapterSecret } from '@/infrastructure/secret/adapter';
+import { createMikroOrmConfig } from '@/infrastructure/config/database.config';
 
 @Module({
   imports: [
