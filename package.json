@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@mikro-orm/core": "^7.2.1",
+    "@mikro-orm/decorators": "7.2.1",
     "@mikro-orm/migrations": "^7.2.1",
     "@mikro-orm/nestjs": "^7.1.0",
     "@mikro-orm/postgresql": "^7.2.1",

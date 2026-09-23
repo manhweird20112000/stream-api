@@ -1,15 +1,16 @@
 services:
-  api:
+  migrator:
     build:
       context: .
       dockerfile: Dockerfile
+      target: builder
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
+    environment: &api_env
       APP_NAME: LOCAL
       APP_PORT: 3000
-      NODE_ENV: development
+      NODE_ENV: production
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
@@ -18,13 +19,36 @@ services:
       DB_SYNC: 'false'
       JWT_SECRET: local-secret
       TOKEN_EXPIRATION: 1000d
+      MIKRO_ORM_CLI_PREFER_TS: 'false'
+    command: pnpm migration:up
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment: *api_env
     ports:
       - '3000:3000'
     volumes:
       - ./storages:/app/storages
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3000/'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   postgres:
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.5-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

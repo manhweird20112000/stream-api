@@ -34,7 +34,7 @@ RUN npm install -g pnpm@${PNPM_VERSION}
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN PNPM_CONFIG_MINIMUM_RELEASE_AGE=0 \
-    pnpm install --prod --frozen-lockfile --ignore-scripts
+    pnpm install --prod --frozen-lockfile
 
 
 FROM node:24-alpine AS runner
