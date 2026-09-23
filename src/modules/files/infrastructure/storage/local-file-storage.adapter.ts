@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { createReadStream } from 'node:fs';
 import { mkdir, stat, unlink } from 'node:fs/promises';
 import * as path from 'node:path';
@@ -12,7 +11,6 @@ import {
 } from '../../application/ports/file-storage.port';
 import type { FileVisibility } from '../../domain/value-objects/file-visibility';
 
-@Injectable()
 export class LocalFileStorageAdapter implements FileStoragePort {
   constructor(
     private readonly basePath = path.join(process.cwd(), 'storages'),

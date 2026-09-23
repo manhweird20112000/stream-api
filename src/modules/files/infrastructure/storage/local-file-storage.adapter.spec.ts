@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import * as sharp from 'sharp';
+import { Test } from '@nestjs/testing';
 import { LocalFileStorageAdapter } from './local-file-storage.adapter';
 
 jest.mock('uuid', () => ({
@@ -18,6 +19,16 @@ describe('LocalFileStorageAdapter', () => {
   });
 
   afterEach(async () => rm(root, { recursive: true, force: true }));
+
+  it('can be constructed as a Nest provider without injected options', async () => {
+    const module = await Test.createTestingModule({
+      providers: [LocalFileStorageAdapter],
+    }).compile();
+
+    expect(module.get(LocalFileStorageAdapter)).toBeInstanceOf(
+      LocalFileStorageAdapter,
+    );
+  });
 
   it('stores a verified image as WebP', async () => {
     const buffer = await sharp({
