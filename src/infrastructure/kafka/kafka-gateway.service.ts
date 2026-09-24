@@ -34,6 +34,7 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
 
   private ready = false;
   private destroyed = false;
+  private connectionGeneration = 0;
   private reconnectTimer?: NodeJS.Timeout;
   private statusSubscription?: Subscription;
 
@@ -45,6 +46,7 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
     this.statusSubscription = this.client.status.subscribe((status) => {
       if (status !== 'connected') {
         this.ready = false;
+        this.connectionGeneration += 1;
         this.scheduleReconnect(true);
       }
     });
@@ -56,6 +58,7 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
     this.ready = false;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
     }
     this.statusSubscription?.unsubscribe();
     await this.client.close();
@@ -105,14 +108,25 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
   }
 
   private connectWithRetry(): void {
+    const generation = this.connectionGeneration;
+
     void this.client
       .connect()
       .then(() => {
+        if (this.destroyed || generation !== this.connectionGeneration) {
+          return;
+        }
+
         this.ready = true;
       })
       .catch(() => {
+        if (this.destroyed || generation !== this.connectionGeneration) {
+          return;
+        }
+
         this.ready = false;
-        void this.client.close().finally(() => this.scheduleReconnect());
+        this.connectionGeneration += 1;
+        void this.resetClient().finally(() => this.scheduleReconnect());
       });
   }
 
@@ -122,11 +136,19 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = undefined;
       if (resetClient) {
-        void this.client.close().finally(() => this.connectWithRetry());
+        void this.resetClient().finally(() => this.connectWithRetry());
         return;
       }
 
       this.connectWithRetry();
     }, KafkaGatewayService.reconnectDelayMs);
+  }
+
+  private async resetClient(): Promise<void> {
+    try {
+      await this.client.close();
+    } catch {
+      this.ready = false;
+    }
   }
 }

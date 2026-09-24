@@ -82,6 +82,52 @@ describe('KafkaGatewayService', () => {
     await service.onModuleDestroy();
   });
 
+  it('continues retrying when closing after failed connect rejects', async () => {
+    jest.useFakeTimers();
+    client.connect
+      .mockRejectedValueOnce(new Error('broker down'))
+      .mockResolvedValueOnce(undefined);
+    client.close.mockRejectedValueOnce(new Error('close failed'));
+    const service = new KafkaGatewayService(client as never);
+
+    service.onModuleInit();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(service.isReady()).toBe(false);
+
+    await jest.advanceTimersByTimeAsync(5000);
+
+    expect(client.connect).toHaveBeenCalledTimes(2);
+    expect(service.isReady()).toBe(true);
+    await service.onModuleDestroy();
+  });
+
+  it('does not let stale connect attempts mark the gateway ready', async () => {
+    jest.useFakeTimers();
+    let resolveFirstConnect: () => void = () => undefined;
+    client.connect.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveFirstConnect = resolve;
+      }),
+    );
+    const service = new KafkaGatewayService(client as never);
+
+    service.onModuleInit();
+    status.next('disconnected');
+    resolveFirstConnect();
+    await Promise.resolve();
+
+    expect(service.isReady()).toBe(false);
+
+    client.connect.mockResolvedValueOnce(undefined);
+    await jest.advanceTimersByTimeAsync(5000);
+
+    expect(client.connect).toHaveBeenCalledTimes(2);
+    expect(service.isReady()).toBe(true);
+    await service.onModuleDestroy();
+  });
+
   it('does not mark itself ready from Kafka status before connect completes', async () => {
     client.connect.mockReturnValue(new Promise(() => undefined));
     const service = new KafkaGatewayService(client as never);
