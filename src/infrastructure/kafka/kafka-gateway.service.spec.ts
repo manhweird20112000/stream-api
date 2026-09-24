@@ -1,4 +1,4 @@
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import {
   KafkaGatewayDownstreamError,
   KafkaGatewayTimeoutError,
@@ -6,15 +6,24 @@ import {
 import { KafkaGatewayService } from './kafka-gateway.service';
 
 describe('KafkaGatewayService', () => {
-  const client = {
-    subscribeToResponseOf: jest.fn(),
-    connect: jest.fn(),
-    close: jest.fn(),
-    send: jest.fn(),
+  let status: Subject<string>;
+  let client: {
+    status: Subject<string>;
+    subscribeToResponseOf: jest.Mock;
+    connect: jest.Mock;
+    close: jest.Mock;
+    send: jest.Mock;
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    status = new Subject<string>();
+    client = {
+      status,
+      subscribeToResponseOf: jest.fn(),
+      connect: jest.fn(),
+      close: jest.fn(),
+      send: jest.fn(),
+    };
     client.connect.mockResolvedValue(undefined);
     client.close.mockResolvedValue(undefined);
   });
@@ -23,12 +32,40 @@ describe('KafkaGatewayService', () => {
     const service = new KafkaGatewayService(client as never);
 
     await service.onModuleInit();
+    await Promise.resolve();
 
     expect(client.subscribeToResponseOf).toHaveBeenCalledWith(
       'stream.commands',
     );
     expect(client.connect).toHaveBeenCalled();
     expect(service.isReady()).toBe(true);
+  });
+
+  it('does not block startup when Kafka connect fails', async () => {
+    client.connect.mockRejectedValue(new Error('broker down'));
+    const service = new KafkaGatewayService(client as never);
+
+    await expect(
+      Promise.resolve(service.onModuleInit()),
+    ).resolves.toBeUndefined();
+    await Promise.resolve();
+
+    expect(client.connect).toHaveBeenCalled();
+    expect(service.isReady()).toBe(false);
+  });
+
+  it('updates readiness from Kafka status changes', async () => {
+    const service = new KafkaGatewayService(client as never);
+    await service.onModuleInit();
+
+    status.next('connected');
+    expect(service.isReady()).toBe(true);
+
+    status.next('disconnected');
+    expect(service.isReady()).toBe(false);
+
+    status.next('crashed');
+    expect(service.isReady()).toBe(false);
   });
 
   it('marks itself not ready after destroy', async () => {

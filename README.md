@@ -22,10 +22,12 @@ The gateway is available locally at `http://localhost:3000`.
 
 - `stream.commands`: commands such as `stream.create`
 - `stream.events`: facts published by business services
-- `stream.replies`: request/reply results for synchronous gateway responses
+- `stream.commands.reply`: Nest Kafka request/reply results for synchronous
+  gateway responses
 
 Commands represent work another service should perform. Events represent facts
-that already happened.
+that already happened. The reply topic is derived from the command topic by
+Nest's Kafka client when `ClientKafka.send()` is used.
 
 ## Command Envelope
 

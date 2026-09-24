@@ -2,8 +2,13 @@ import { INestApplication } from '@nestjs/common';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
+import {
+  KafkaGatewayDownstreamError,
+  KafkaGatewayTimeoutError,
+} from '../src/infrastructure/kafka/kafka.errors';
 import { CreateStreamUseCase } from '../src/modules/streams/application/use-cases/create-stream.use-case';
 import { StreamsController } from '../src/modules/streams/presentation/http/streams.controller';
+import { HttpExceptionFilter } from '../src/shared/presentation/filters/http-exception.filter';
 import { JwtAuthGuard } from '../src/shared/presentation/guards/jwt-auth.guard';
 import { ValidationPipe } from '../src/shared/presentation/validation/validation.pipe';
 
@@ -24,6 +29,7 @@ describe('streams gateway (e2e)', () => {
 
     app = module.createNestApplication();
     app.setGlobalPrefix('api');
+    app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
     jwt = module.get(JwtService);
@@ -71,5 +77,45 @@ describe('streams gateway (e2e)', () => {
       title: 'Launch stream',
       description: 'Demo',
     });
+  });
+
+  it('maps downstream Kafka timeouts to gateway timeout responses', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    createStream.execute.mockRejectedValue(new KafkaGatewayTimeoutError());
+
+    const response = await request(app.getHttpServer())
+      .post('/api/streams')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Launch stream', description: 'Demo' })
+      .expect(504);
+
+    expect(response.body).toEqual({
+      status_code: 504,
+      message: 'Downstream service timed out',
+      data: { code: 'DOWNSTREAM_TIMEOUT' },
+    });
+  });
+
+  it('maps downstream Kafka errors without exposing raw downstream messages', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    createStream.execute.mockRejectedValue(
+      new KafkaGatewayDownstreamError(
+        'STREAM_LIMIT_REACHED',
+        'internal secret',
+      ),
+    );
+
+    const response = await request(app.getHttpServer())
+      .post('/api/streams')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Launch stream', description: 'Demo' })
+      .expect(502);
+
+    expect(response.body).toEqual({
+      status_code: 502,
+      message: 'Downstream service error',
+      data: { code: 'STREAM_LIMIT_REACHED' },
+    });
+    expect(JSON.stringify(response.body)).not.toContain('internal secret');
   });
 });

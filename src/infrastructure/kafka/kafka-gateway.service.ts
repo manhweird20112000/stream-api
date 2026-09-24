@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom, Subscription, timeout } from 'rxjs';
 import { KAFKA_CLIENT, STREAM_TOPICS } from './kafka.constants';
 import {
   KafkaGatewayDownstreamError,
@@ -31,17 +31,28 @@ interface KafkaReplyEnvelope<TData> {
 @Injectable()
 export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
   private ready = false;
+  private statusSubscription?: Subscription;
 
   constructor(@Inject(KAFKA_CLIENT) private readonly client: ClientKafka) {}
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     this.client.subscribeToResponseOf(STREAM_TOPICS.commands);
-    await this.client.connect();
-    this.ready = true;
+    this.statusSubscription = this.client.status.subscribe((status) => {
+      this.ready = status === 'connected';
+    });
+    void this.client
+      .connect()
+      .then(() => {
+        this.ready = true;
+      })
+      .catch(() => {
+        this.ready = false;
+      });
   }
 
   async onModuleDestroy(): Promise<void> {
     this.ready = false;
+    this.statusSubscription?.unsubscribe();
     await this.client.close();
   }
 

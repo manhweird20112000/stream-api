@@ -17,7 +17,7 @@
 - Business service communication goes through Kafka commands, replies, and events.
 - Remove the current `files` feature as gateway-owned business logic.
 - The gateway must not own MikroORM entities, migrations, feature repositories, image processing, or business database tables.
-- Initial topic convention: `stream.commands`, `stream.events`, and `stream.replies`.
+- Initial topic convention: `stream.commands`, `stream.events`, and Nest's derived `stream.commands.reply`.
 - Command envelopes include `requestId`, optional `userId`, `type`, and `payload`.
 - Keep operational endpoints `GET /health/live` and `GET /health/ready`.
 - Required env keys: `APP_NAME`, `APP_PORT`, `NODE_ENV`, `KAFKA_BROKERS`, `KAFKA_CLIENT_ID`, `KAFKA_GROUP_ID`, `JWT_SECRET`, and `TOKEN_EXPIRATION`.
@@ -88,12 +88,14 @@
 ### Task 1: Gateway Environment Configuration
 
 **Files:**
+
 - Modify: `src/infrastructure/secret/adapter.ts`
 - Modify: `src/infrastructure/secret/service.ts`
 - Modify: `src/infrastructure/secret/service.spec.ts`
 - Modify: `.env.example`
 
 **Interfaces:**
+
 - Consumes: environment variables from process env.
 - Produces: `IAdapterSecret` with gateway Kafka fields while keeping the existing database fields until Task 5 removes the database module.
 
@@ -299,6 +301,7 @@ git commit -m "refactor(config): switch gateway env to kafka"
 ### Task 2: Kafka Gateway Adapter
 
 **Files:**
+
 - Create: `src/infrastructure/kafka/kafka.constants.ts`
 - Create: `src/infrastructure/kafka/kafka.errors.ts`
 - Create: `src/infrastructure/kafka/kafka-gateway.service.ts`
@@ -308,8 +311,9 @@ git commit -m "refactor(config): switch gateway env to kafka"
 - Modify: `pnpm-lock.yaml`
 
 **Interfaces:**
+
 - Consumes: `IAdapterSecret.KAFKA_BROKERS`, `IAdapterSecret.KAFKA_CLIENT_ID`, and `IAdapterSecret.KAFKA_GROUP_ID`.
-- Produces: `KafkaGatewayService.request<TData, TPayload>(topic: string, message: KafkaCommandEnvelope<TPayload>, timeoutMs?: number): Promise<TData>`, `KafkaGatewayService.isReady(): boolean`, `STREAM_TOPICS.commands`, `STREAM_TOPICS.events`, and `STREAM_TOPICS.replies`.
+- Produces: `KafkaGatewayService.request<TData, TPayload>(topic: string, message: KafkaCommandEnvelope<TPayload>, timeoutMs?: number): Promise<TData>`, `KafkaGatewayService.isReady(): boolean`, `STREAM_TOPICS.commands`, `STREAM_TOPICS.events`, and `STREAM_TOPICS.commandReplies`.
 
 - [ ] **Step 1: Add Kafka dependencies**
 
@@ -323,7 +327,10 @@ Write `src/infrastructure/kafka/kafka-gateway.service.spec.ts`:
 
 ```typescript
 import { of, throwError } from 'rxjs';
-import { KafkaGatewayDownstreamError, KafkaGatewayTimeoutError } from './kafka.errors';
+import {
+  KafkaGatewayDownstreamError,
+  KafkaGatewayTimeoutError,
+} from './kafka.errors';
 import { KafkaGatewayService } from './kafka-gateway.service';
 
 describe('KafkaGatewayService', () => {
@@ -345,7 +352,9 @@ describe('KafkaGatewayService', () => {
 
     await service.onModuleInit();
 
-    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('stream.commands');
+    expect(client.subscribeToResponseOf).toHaveBeenCalledWith(
+      'stream.commands',
+    );
     expect(client.connect).toHaveBeenCalled();
     expect(service.isReady()).toBe(true);
   });
@@ -435,7 +444,7 @@ export const KAFKA_CLIENT = Symbol('KAFKA_CLIENT');
 export const STREAM_TOPICS = {
   commands: 'stream.commands',
   events: 'stream.events',
-  replies: 'stream.replies',
+  commandReplies: 'stream.commands.reply',
 } as const;
 ```
 
@@ -465,11 +474,19 @@ export class KafkaGatewayDownstreamError extends Error {
 Write `src/infrastructure/kafka/kafka-gateway.service.ts`:
 
 ```typescript
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 import { KAFKA_CLIENT, STREAM_TOPICS } from './kafka.constants';
-import { KafkaGatewayDownstreamError, KafkaGatewayTimeoutError } from './kafka.errors';
+import {
+  KafkaGatewayDownstreamError,
+  KafkaGatewayTimeoutError,
+} from './kafka.errors';
 
 export interface KafkaCommandEnvelope<TPayload> {
   requestId: string;
@@ -515,10 +532,12 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
   ): Promise<TData> {
     try {
       const reply = await firstValueFrom(
-        this.client.send<KafkaReplyEnvelope<TData>, KafkaCommandEnvelope<TPayload>>(
-          topic,
-          message,
-        ).pipe(timeout({ first: timeoutMs })),
+        this.client
+          .send<KafkaReplyEnvelope<TData>, KafkaCommandEnvelope<TPayload>>(
+            topic,
+            message,
+          )
+          .pipe(timeout({ first: timeoutMs })),
       );
 
       if (!reply.ok) {
@@ -596,6 +615,7 @@ git commit -m "feat(kafka): add gateway client adapter"
 ### Task 3: Health Endpoints And Shutdown Hooks
 
 **Files:**
+
 - Create: `src/infrastructure/health/health.controller.ts`
 - Create: `src/infrastructure/health/health.module.ts`
 - Create: `src/infrastructure/health/health.controller.spec.ts`
@@ -604,6 +624,7 @@ git commit -m "feat(kafka): add gateway client adapter"
 - Modify: `test/app.e2e-spec.ts`
 
 **Interfaces:**
+
 - Consumes: `KafkaGatewayService.isReady(): boolean`.
 - Produces: `GET /health/live`, `GET /health/ready`, and Nest shutdown hooks in `main.ts`.
 
@@ -697,7 +718,7 @@ export class HealthModule {}
 Modify `src/main.ts` so `bootstrap()` includes:
 
 ```typescript
-  app.enableShutdownHooks();
+app.enableShutdownHooks();
 ```
 
 after the app is created and before `app.listen(APP_PORT)`.
@@ -793,6 +814,7 @@ git commit -m "feat(health): add gateway readiness checks"
 ### Task 4: Streams Gateway Contract Module
 
 **Files:**
+
 - Create: `src/shared/presentation/guards/jwt-auth.guard.ts`
 - Create: `src/shared/presentation/guards/jwt-auth.guard.spec.ts`
 - Create: `src/modules/streams/application/dto/create-stream.input.ts`
@@ -806,6 +828,7 @@ git commit -m "feat(health): add gateway readiness checks"
 - Modify: `src/modules/index.ts`
 
 **Interfaces:**
+
 - Consumes: `KafkaGatewayService.request<TData, TPayload>()`, `STREAM_TOPICS.commands`, `JWT_SECRET`, and `TOKEN_EXPIRATION`.
 - Produces: `POST /api/streams` with JWT auth, request validation, and a Kafka command envelope of type `stream.create`.
 
@@ -954,7 +977,9 @@ describe('JwtAuthGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(request).toEqual(
-      expect.objectContaining({ user: expect.objectContaining({ sub: 'user-1' }) }),
+      expect.objectContaining({
+        user: expect.objectContaining({ sub: 'user-1' }),
+      }),
     );
   });
 });
@@ -1025,13 +1050,7 @@ export class CreateStreamRequest {
 Write `src/modules/streams/presentation/http/streams.controller.ts`:
 
 ```typescript
-import {
-  Body,
-  Controller,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '@/shared/presentation/guards/jwt-auth.guard';
 import { CreateStreamUseCase } from '../../application/use-cases/create-stream.use-case';
@@ -1049,7 +1068,10 @@ export class StreamsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() body: CreateStreamRequest, @Req() request: AuthenticatedRequest) {
+  create(
+    @Body() body: CreateStreamRequest,
+    @Req() request: AuthenticatedRequest,
+  ) {
     return this.createStream.execute({
       userId: request.user.sub,
       title: body.title,
@@ -1077,10 +1099,9 @@ describe('StreamsController', () => {
     const controller = new StreamsController(useCase as never);
 
     await expect(
-      controller.create(
-        { title: 'Launch stream', description: 'Demo' },
-        { user: { sub: 'user-1' } } as never,
-      ),
+      controller.create({ title: 'Launch stream', description: 'Demo' }, {
+        user: { sub: 'user-1' },
+      } as never),
     ).resolves.toEqual({ streamId: 'stream-1', status: 'created' });
 
     expect(useCase.execute).toHaveBeenCalledWith({
@@ -1238,6 +1259,7 @@ git commit -m "feat(streams): add kafka gateway endpoint"
 ### Task 5: Remove Files, Database, And Storage Ownership
 
 **Files:**
+
 - Delete: `src/modules/files/**`
 - Delete: `src/infrastructure/database/**`
 - Delete: `src/infrastructure/config/database.config.ts`
@@ -1254,6 +1276,7 @@ git commit -m "feat(streams): add kafka gateway endpoint"
 - Modify: `pnpm-lock.yaml`
 
 **Interfaces:**
+
 - Consumes: `StreamsModule`, `HealthModule`, `SecretModule`, and `WinstonModule`.
 - Produces: a gateway app with no file module, database module, storage adapter, ORM config, or migration scripts.
 
@@ -1503,11 +1526,13 @@ git commit -m "refactor: remove gateway-owned file storage"
 ### Task 6: Docker Compose And Documentation
 
 **Files:**
+
 - Modify: `docker-compose.yml`
 - Modify: `Dockerfile`
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Consumes: `APP_PORT`, `KAFKA_BROKERS`, and `GET /health/live`.
 - Produces: local Compose stack with `api-gateway` and Kafka broker only.
 
@@ -1580,7 +1605,7 @@ Replace `README.md` with these sections:
 - `# API Gateway`
 - A short opening paragraph: "This NestJS service is the client-facing API Gateway for the stream microservice system."
 - `## Runtime Model`: explain that client traffic enters through HTTP, gateway modules validate/authenticate requests, and business work is sent to Kafka.
-- `## Kafka Conventions`: document `stream.commands`, `stream.events`, and `stream.replies`.
+- `## Kafka Conventions`: document `stream.commands`, `stream.events`, and `stream.commands.reply`.
 - `## Command Envelope`: include this JSON example:
 
   ```json
@@ -1627,9 +1652,11 @@ git commit -m "docs: describe kafka api gateway"
 ### Task 7: Full Regression
 
 **Files:**
+
 - Modify only files changed by earlier tasks if verification reveals a defect.
 
 **Interfaces:**
+
 - Verifies the gateway refactor end to end.
 
 - [ ] **Step 1: Run source stale-reference check**

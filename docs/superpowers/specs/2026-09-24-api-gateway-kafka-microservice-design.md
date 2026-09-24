@@ -60,7 +60,7 @@ Use topic categories by intent:
 ```text
 *.commands  = request another service to do work
 *.events    = announce something that happened
-*.replies   = return a result for request/reply flows
+*.commands.reply = return a result for Nest Kafka request/reply flows
 ```
 
 Initial naming convention:
@@ -68,7 +68,7 @@ Initial naming convention:
 ```text
 stream.commands
 stream.events
-stream.replies
+stream.commands.reply
 ```
 
 Command messages should include:
@@ -131,8 +131,9 @@ communication. Wrap Kafka access in a small gateway-owned service so
 controllers do not depend directly on Kafka client details.
 
 Keep business handlers out of this repository. `@MessagePattern` and
-`@EventPattern` belong in business services, not the API Gateway, unless the
-gateway later needs to consume replies through a dedicated adapter.
+`@EventPattern` belong in business services, not the API Gateway. The gateway
+uses Nest's Kafka request/reply adapter, which derives reply topics from command
+topics, for example `stream.commands.reply`.
 
 ## Current Module Removal
 
