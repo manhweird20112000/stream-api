@@ -24,26 +24,15 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "migration:create": "node scripts/create-migration.js",
-    "migration:up": "pnpm build && mikro-orm migration:up",
-    "migration:down": "pnpm build && mikro-orm migration:down",
-    "seed:run": "pnpm build && node scripts/run-seeder.js"
+    "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@mikro-orm/core": "^7.2.1",
-    "@mikro-orm/decorators": "7.2.1",
-    "@mikro-orm/migrations": "^7.2.1",
-    "@mikro-orm/nestjs": "^7.1.0",
-    "@mikro-orm/postgresql": "^7.2.1",
     "@nestjs/common": "^11.2.5",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.2.5",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/microservices": "^11.2.5",
-    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.2.5",
-    "@nestjs/serve-static": "^5.0.5",
     "@nestjs/swagger": "^11.4.7",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -52,19 +41,13 @@
     "dotenv": "^17.3.1",
     "kafkajs": "^2.2.4",
     "nest-winston": "^1.10.2",
-    "nestjs-paginate": "^12.9.0",
-    "passport": "^0.7.0",
-    "passport-jwt": "^4.0.1",
-    "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "sharp": "^0.34.5",
     "uuid": "^13.0.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
-    "@mikro-orm/cli": "^7.2.1",
     "@nestjs/cli": "^11.0.16",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.2.5",
@@ -74,9 +57,7 @@
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.6",
     "@types/jest": "30.0.0",
-    "@types/multer": "^2.1.0",
     "@types/node": "24.13.6",
-    "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
@@ -112,10 +93,5 @@
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1"
     }
-  },
-  "mikro-orm": {
-    "configPaths": [
-      "./mikro-orm.config.js"
-    ]
   }
 }

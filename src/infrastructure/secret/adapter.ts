@@ -6,9 +6,6 @@ export abstract class IAdapterSecret {
   abstract KAFKA_CLIENT_ID: string;
   abstract KAFKA_GROUP_ID: string;
 
-  abstract POSTGRES_URI: string;
-  abstract POSTGRES_SYNC: boolean;
-
   abstract JWT_SECRET: string;
   abstract TOKEN_EXPIRATION: string;
 }

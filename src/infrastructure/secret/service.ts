@@ -9,12 +9,6 @@ export class SecretService extends ConfigService implements IAdapterSecret {
   KAFKA_CLIENT_ID = this.required('KAFKA_CLIENT_ID');
   KAFKA_GROUP_ID = this.required('KAFKA_GROUP_ID');
 
-  POSTGRES_URI = `postgres://${this.required('DB_USER')}:${this.required(
-    'DB_PASSWORD',
-  )}@${this.required('DB_HOST')}:${this.required('DB_PORT')}/${this.required('DB_NAME')}`;
-
-  POSTGRES_SYNC = this.get('DB_SYNC') === 'true';
-
   JWT_SECRET = this.required('JWT_SECRET');
   TOKEN_EXPIRATION = this.required('TOKEN_EXPIRATION');
 

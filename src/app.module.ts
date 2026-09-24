@@ -1,11 +1,8 @@
 import { Module } from '@nestjs/common';
 import { SecretModule } from '@/infrastructure/secret';
-import { DatabaseModule } from '@/infrastructure/database/database.module';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from '@/infrastructure/config/logger.config';
 import { ContainerModules } from './modules';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import * as path from 'node:path';
 import { AppController } from './app.controller';
 import { DebugController } from './debug.controller';
 import { HealthModule } from '@/infrastructure/health/health.module';
@@ -18,19 +15,8 @@ const controllers =
 
 @Module({
   imports: [
-    ServeStaticModule.forRoot({
-      rootPath: path.join(process.cwd(), 'storages', 'public'),
-      useGlobalPrefix: false,
-      serveRoot: '/assets',
-      exclude: ['/api/{*test}'],
-      serveStaticOptions: {
-        fallthrough: false,
-        cacheControl: true,
-      },
-    }),
     WinstonModule.forRoot(winstonConfig),
     SecretModule,
-    DatabaseModule,
     HealthModule,
     ContainerModules,
   ],
