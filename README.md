@@ -12,8 +12,8 @@ Business services own domain rules, persistence, and service-to-service events.
 The gateway keeps operational HTTP endpoints for deployment checks:
 
 ```text
-GET /health/live
-GET /health/ready
+GET /api/health/live
+GET /api/health/ready
 ```
 
 The gateway is available locally at `http://localhost:3000`.
