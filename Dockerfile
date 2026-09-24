@@ -46,8 +46,7 @@ ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist
 COPY --from=prod-deps /app/node_modules ./node_modules
 
-COPY package.json mikro-orm.config.js ./
-RUN mkdir -p ./storages
+COPY package.json ./
 
 EXPOSE 3000
 
