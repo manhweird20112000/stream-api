@@ -11,10 +11,9 @@ describe('StreamsController', () => {
     const controller = new StreamsController(useCase as never);
 
     await expect(
-      controller.create(
-        { title: 'Launch stream', description: 'Demo' },
-        { user: { sub: 'user-1' } } as never,
-      ),
+      controller.create({ title: 'Launch stream', description: 'Demo' }, {
+        user: { sub: 'user-1' },
+      } as never),
     ).resolves.toEqual({ streamId: 'stream-1', status: 'created' });
 
     expect(useCase.execute).toHaveBeenCalledWith({
