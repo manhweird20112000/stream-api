@@ -1,4 +1,4 @@
-import { of, Subject, throwError } from 'rxjs';
+import { NEVER, of, Subject, throwError } from 'rxjs';
 import {
   KafkaGatewayDownstreamError,
   KafkaGatewayTimeoutError,
@@ -16,6 +16,7 @@ describe('KafkaGatewayService', () => {
   };
 
   beforeEach(() => {
+    jest.useRealTimers();
     status = new Subject<string>();
     client = {
       status,
@@ -26,6 +27,10 @@ describe('KafkaGatewayService', () => {
     };
     client.connect.mockResolvedValue(undefined);
     client.close.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('subscribes to stream command replies and marks itself ready after connect', async () => {
@@ -49,16 +54,50 @@ describe('KafkaGatewayService', () => {
       Promise.resolve(service.onModuleInit()),
     ).resolves.toBeUndefined();
     await Promise.resolve();
+    await Promise.resolve();
 
     expect(client.connect).toHaveBeenCalled();
     expect(service.isReady()).toBe(false);
+    await service.onModuleDestroy();
   });
 
-  it('updates readiness from Kafka status changes', async () => {
+  it('retries after a failed initial Kafka connect and becomes ready', async () => {
+    jest.useFakeTimers();
+    client.connect
+      .mockRejectedValueOnce(new Error('broker down'))
+      .mockResolvedValueOnce(undefined);
+    const service = new KafkaGatewayService(client as never);
+
+    service.onModuleInit();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(service.isReady()).toBe(false);
+    expect(client.close).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(5000);
+
+    expect(client.connect).toHaveBeenCalledTimes(2);
+    expect(service.isReady()).toBe(true);
+    await service.onModuleDestroy();
+  });
+
+  it('does not mark itself ready from Kafka status before connect completes', async () => {
+    client.connect.mockReturnValue(new Promise(() => undefined));
+    const service = new KafkaGatewayService(client as never);
+
+    service.onModuleInit();
+    status.next('connected');
+
+    expect(service.isReady()).toBe(false);
+    await service.onModuleDestroy();
+  });
+
+  it('clears readiness from unavailable Kafka status changes', async () => {
     const service = new KafkaGatewayService(client as never);
     await service.onModuleInit();
+    await Promise.resolve();
 
-    status.next('connected');
     expect(service.isReady()).toBe(true);
 
     status.next('disconnected');
@@ -66,6 +105,32 @@ describe('KafkaGatewayService', () => {
 
     status.next('crashed');
     expect(service.isReady()).toBe(false);
+
+    status.next('rebalancing');
+    expect(service.isReady()).toBe(false);
+
+    status.next('stopped');
+    expect(service.isReady()).toBe(false);
+    await service.onModuleDestroy();
+  });
+
+  it('reconnects after Kafka reports an unavailable status', async () => {
+    jest.useFakeTimers();
+    const service = new KafkaGatewayService(client as never);
+    service.onModuleInit();
+    await Promise.resolve();
+
+    expect(service.isReady()).toBe(true);
+
+    status.next('disconnected');
+    expect(service.isReady()).toBe(false);
+
+    await jest.advanceTimersByTimeAsync(5000);
+
+    expect(client.close).toHaveBeenCalledTimes(1);
+    expect(client.connect).toHaveBeenCalledTimes(2);
+    expect(service.isReady()).toBe(true);
+    await service.onModuleDestroy();
   });
 
   it('marks itself not ready after destroy', async () => {
@@ -116,9 +181,7 @@ describe('KafkaGatewayService', () => {
   });
 
   it('converts transport timeouts into a gateway timeout error', async () => {
-    client.send.mockReturnValue(
-      throwError(() => new Error('Timeout has occurred')),
-    );
+    client.send.mockReturnValue(NEVER);
     const service = new KafkaGatewayService(client as never);
 
     await expect(
@@ -133,5 +196,28 @@ describe('KafkaGatewayService', () => {
         1,
       ),
     ).rejects.toBeInstanceOf(KafkaGatewayTimeoutError);
+  });
+
+  it('converts non-timeout transport errors into sanitized downstream errors', async () => {
+    client.send.mockReturnValue(throwError(() => new Error('broker secret')));
+    const service = new KafkaGatewayService(client as never);
+
+    await expect(
+      service.request(
+        'stream.commands',
+        {
+          requestId: 'req-1',
+          userId: 'user-1',
+          type: 'stream.create',
+          payload: { title: 'Demo' },
+        },
+        1,
+      ),
+    ).rejects.toEqual(
+      new KafkaGatewayDownstreamError(
+        'DOWNSTREAM_ERROR',
+        'Downstream service error',
+      ),
+    );
   });
 });

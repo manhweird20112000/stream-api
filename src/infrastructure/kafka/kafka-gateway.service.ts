@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { firstValueFrom, Subscription, timeout } from 'rxjs';
+import { firstValueFrom, Subscription, TimeoutError, timeout } from 'rxjs';
 import { KAFKA_CLIENT, STREAM_TOPICS } from './kafka.constants';
 import {
   KafkaGatewayDownstreamError,
@@ -30,28 +30,33 @@ interface KafkaReplyEnvelope<TData> {
 
 @Injectable()
 export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
+  private static readonly reconnectDelayMs = 5000;
+
   private ready = false;
+  private destroyed = false;
+  private reconnectTimer?: NodeJS.Timeout;
   private statusSubscription?: Subscription;
 
   constructor(@Inject(KAFKA_CLIENT) private readonly client: ClientKafka) {}
 
   onModuleInit(): void {
+    this.destroyed = false;
     this.client.subscribeToResponseOf(STREAM_TOPICS.commands);
     this.statusSubscription = this.client.status.subscribe((status) => {
-      this.ready = status === 'connected';
-    });
-    void this.client
-      .connect()
-      .then(() => {
-        this.ready = true;
-      })
-      .catch(() => {
+      if (status !== 'connected') {
         this.ready = false;
-      });
+        this.scheduleReconnect(true);
+      }
+    });
+    this.connectWithRetry();
   }
 
   async onModuleDestroy(): Promise<void> {
+    this.destroyed = true;
     this.ready = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
     this.statusSubscription?.unsubscribe();
     await this.client.close();
   }
@@ -88,7 +93,40 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
         throw error;
       }
 
-      throw new KafkaGatewayTimeoutError();
+      if (error instanceof TimeoutError) {
+        throw new KafkaGatewayTimeoutError();
+      }
+
+      throw new KafkaGatewayDownstreamError(
+        'DOWNSTREAM_ERROR',
+        'Downstream service error',
+      );
     }
+  }
+
+  private connectWithRetry(): void {
+    void this.client
+      .connect()
+      .then(() => {
+        this.ready = true;
+      })
+      .catch(() => {
+        this.ready = false;
+        void this.client.close().finally(() => this.scheduleReconnect());
+      });
+  }
+
+  private scheduleReconnect(resetClient = false): void {
+    if (this.destroyed || this.reconnectTimer) return;
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined;
+      if (resetClient) {
+        void this.client.close().finally(() => this.connectWithRetry());
+        return;
+      }
+
+      this.connectWithRetry();
+    }, KafkaGatewayService.reconnectDelayMs);
   }
 }
