@@ -11,11 +11,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "build:swc": "pnpm build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:swc": "pnpm start:dev",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\"",

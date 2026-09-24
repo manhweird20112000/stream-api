@@ -7,6 +7,13 @@ import {
 } from '@nestjs/common';
 import { map, Observable } from 'rxjs';
 
+const SUCCESS_MESSAGES = {
+  en: 'Success',
+  vi: 'Thành công',
+} as const;
+
+type SupportedLocale = keyof typeof SUCCESS_MESSAGES;
+
 @Injectable()
 export class HttpSuccessInterceptor<T> implements NestInterceptor<T, any> {
   intercept(
@@ -18,12 +25,29 @@ export class HttpSuccessInterceptor<T> implements NestInterceptor<T, any> {
         if (data instanceof StreamableFile) {
           return data;
         }
+        const statusCode = context.switchToHttp().getResponse().statusCode;
+        const request = context.switchToHttp().getRequest();
+        const locale = this.resolveLocale(request.headers?.['accept-language']);
+
         return {
-          status_code: context.switchToHttp().getResponse().statusCode,
+          status_code: statusCode,
           data: data,
-          message: 'Successfully.',
+          message: SUCCESS_MESSAGES[locale],
         };
       }),
     );
+  }
+
+  private resolveLocale(acceptLanguage: unknown): SupportedLocale {
+    const header = Array.isArray(acceptLanguage)
+      ? acceptLanguage.join(',')
+      : String(acceptLanguage ?? '');
+
+    return header
+      .split(',')
+      .map((language) => language.trim().split(';')[0]?.toLowerCase())
+      .some((language) => language === 'vi' || language?.startsWith('vi-'))
+      ? 'vi'
+      : 'en';
   }
 }

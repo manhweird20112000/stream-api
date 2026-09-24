@@ -4,6 +4,7 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { HttpExceptionFilter } from '@/shared/presentation/filters/http-exception.filter';
 import { HttpSuccessInterceptor } from '@/shared/presentation/interceptors/http-success.interceptor';
 import { RequestMethod, VersioningType } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { IAdapterSecret } from '@/infrastructure/secret/adapter';
 import { useContainer } from 'class-validator';
 import compression from 'compression';
@@ -27,13 +28,20 @@ async function bootstrap() {
   app.useGlobalInterceptors(new HttpSuccessInterceptor());
 
   app.setGlobalPrefix('api', {
-    exclude: [
-      { path: 'health', method: RequestMethod.GET },
-      { path: '/', method: RequestMethod.GET },
-    ],
+    exclude: [{ path: 'health', method: RequestMethod.GET }],
   });
 
   app.enableVersioning({ type: VersioningType.URI });
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Stream API')
+    .setDescription('HTTP API documentation for the Stream service.')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, swaggerDocument);
 
   const { APP_PORT } = app.get(IAdapterSecret);
 

@@ -1,46 +1,30 @@
-# API Gateway
+# Stream API Service
 
-This NestJS service is the client-facing API Gateway for the stream
-microservice system.
+NestJS service base for the Stream system. This repository currently runs as
+the client-facing HTTP API Gateway: it validates HTTP requests, authenticates
+callers, and sends business commands to downstream services through Kafka.
+
+The shared infrastructure is intentionally reusable for other services:
+configuration, logging, validation, exception handling, health checks, JWT auth,
+and Kafka integration can be kept. Gateway-specific modules should be renamed
+or removed when this codebase is used for a business service.
 
 ## Runtime Model
 
-Client traffic enters through HTTP. Gateway modules validate requests,
-authenticate callers, and publish Kafka command envelopes to business services.
-Business services own domain rules, persistence, and service-to-service events.
+Client traffic enters through HTTP under `/api`. Gateway modules handle request
+validation and authentication, then publish Kafka command envelopes to business
+services. Business services own domain rules, persistence, and service-to-service
+events.
 
-The gateway keeps operational HTTP endpoints for deployment checks:
+Operational endpoints:
 
 ```text
 GET /api/health/live
 GET /api/health/ready
+GET /api/docs
 ```
 
-The gateway is available locally at `http://localhost:3000`.
-
-## Kafka Conventions
-
-- `stream.commands`: commands such as `stream.create`
-- `stream.events`: facts published by business services
-- `stream.commands.reply`: Nest Kafka request/reply results for synchronous
-  gateway responses
-
-Commands represent work another service should perform. Events represent facts
-that already happened. The reply topic is derived from the command topic by
-Nest's Kafka client when `ClientKafka.send()` is used.
-
-## Command Envelope
-
-```json
-{
-  "requestId": "req-123",
-  "userId": "user-1",
-  "type": "stream.create",
-  "payload": {
-    "title": "Launch stream"
-  }
-}
-```
+Local URL: `http://localhost:3000`.
 
 ## Local Development
 
@@ -50,7 +34,7 @@ Copy-Item .env.example .env
 pnpm start:dev
 ```
 
-Required local environment:
+Required environment:
 
 ```env
 APP_NAME=api-gateway
@@ -63,6 +47,15 @@ JWT_SECRET=change-this-secret-before-deployment
 TOKEN_EXPIRATION=1000d
 ```
 
+Optional debug route:
+
+```env
+ENABLE_DEBUG_ROUTES=true
+```
+
+When enabled in development, `GET /api/debug/block-event-loop?durationMs=1000`
+can be used to test event-loop blocking behavior.
+
 ## Docker
 
 ```bash
@@ -74,12 +67,30 @@ docker compose down
 
 The local stack contains:
 
-- `api-gateway`: NestJS HTTP gateway
+- `api-gateway`: NestJS HTTP service
 - `kafka`: single-node local broker
 
-## HTTP Contract Example
+## Kafka Conventions
 
-Create a stream through the gateway:
+- `stream.commands`: commands such as `stream.create`
+- `stream.events`: facts published by business services
+- `stream.commands.reply`: Nest Kafka request/reply results for synchronous
+  HTTP responses
+
+Example command envelope:
+
+```json
+{
+  "requestId": "req-123",
+  "userId": "user-1",
+  "type": "stream.create",
+  "payload": {
+    "title": "Launch stream"
+  }
+}
+```
+
+## HTTP Example
 
 ```http
 POST /api/streams
@@ -92,7 +103,7 @@ Content-Type: application/json
 }
 ```
 
-The gateway validates the request, verifies the JWT, and sends a
+The service validates the request, verifies the JWT, and sends a
 `stream.create` command to Kafka.
 
 ## Project Structure
@@ -101,8 +112,6 @@ The gateway validates the request, verifies the JWT, and sends a
 src/
 |-- main.ts
 |-- app.module.ts
-|-- app.controller.ts
-|-- debug.controller.ts
 |
 |-- infrastructure/
 |   |-- config/
@@ -134,20 +143,19 @@ src/
     `-- utils/
 ```
 
-## Adding Gateway Endpoints
+## Reusing For Another Service
 
-1. Add an HTTP request DTO under the target module's `presentation/http/dto`
-   path.
-2. Add a use case that builds a Kafka command envelope.
-3. Inject `KafkaGatewayService` into the use case.
-4. Keep domain rules and persistence inside the downstream business service.
-5. Add controller, use-case, and E2E coverage for the gateway behavior.
+Keep the shared infrastructure that service needs. Replace gateway-specific
+names, Docker service names, env values, and feature modules.
 
-## Testing And Quality
+For a business service, add the service's domain, persistence, repositories, and
+Kafka consumers there instead of keeping the API Gateway contract module.
+
+## Quality Checks
 
 ```bash
-pnpm test -- --runInBand
-pnpm test:e2e -- --runInBand
+pnpm test --runInBand
+pnpm test:e2e --runInBand
 pnpm lint
 pnpm build
 ```
