@@ -8,10 +8,13 @@ export abstract class IAdapterSecret {
   abstract DATABASE_PASSWORD: string;
   abstract DATABASE_NAME: string;
 
-  abstract KAFKA_BROKERS: string[];
-  abstract KAFKA_CLIENT_ID: string;
-  abstract KAFKA_GROUP_ID: string;
-
   abstract JWT_SECRET: string;
   abstract TOKEN_EXPIRATION: string;
+  abstract REFRESH_TOKEN_EXPIRATION_DAYS: number;
+
+  abstract GOOGLE_CLIENT_ID: string;
+  abstract GOOGLE_CLIENT_SECRET: string;
+  abstract GOOGLE_CALLBACK_URL: string;
+  abstract AUTH_SUCCESS_REDIRECT_URL: string;
+  abstract AUTH_FAILURE_REDIRECT_URL: string;
 }

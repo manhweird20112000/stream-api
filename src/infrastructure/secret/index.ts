@@ -7,7 +7,10 @@ import { SecretService } from './service';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: process.env.NODE_ENV === 'production' ? '.env.prod' : '.env',
+      envFilePath: [
+        process.env.NODE_ENV === 'production' ? '.env.prod' : '.env',
+        '.env',
+      ],
     }),
   ],
   providers: [

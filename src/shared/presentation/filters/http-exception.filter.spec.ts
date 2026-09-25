@@ -1,8 +1,4 @@
-import { ArgumentsHost } from '@nestjs/common';
-import {
-  KafkaGatewayDownstreamError,
-  KafkaGatewayTimeoutError,
-} from '@/infrastructure/kafka/kafka.errors';
+import { ArgumentsHost, BadRequestException } from '@nestjs/common';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 function createHost() {
@@ -20,35 +16,22 @@ function createHost() {
 }
 
 describe('HttpExceptionFilter', () => {
-  it('maps Kafka timeouts to a stable gateway timeout response', () => {
-    const { host, response } = createHost();
-
-    new HttpExceptionFilter().catch(new KafkaGatewayTimeoutError(), host);
-
-    expect(response.status).toHaveBeenCalledWith(504);
-    expect(response.json).toHaveBeenCalledWith({
-      status_code: 504,
-      message: 'Downstream service timed out',
-      data: { code: 'DOWNSTREAM_TIMEOUT' },
-    });
-  });
-
-  it('maps Kafka downstream errors without exposing raw downstream messages', () => {
+  it('maps validation errors to a stable bad request response', () => {
     const { host, response } = createHost();
 
     new HttpExceptionFilter().catch(
-      new KafkaGatewayDownstreamError('STREAM_LIMIT_REACHED', 'internal stack'),
+      new BadRequestException({
+        message: 'Validation failed',
+        data: [{ property: 'email', constraints: ['email must be valid'] }],
+      }),
       host,
     );
 
-    expect(response.status).toHaveBeenCalledWith(502);
+    expect(response.status).toHaveBeenCalledWith(400);
     expect(response.json).toHaveBeenCalledWith({
-      status_code: 502,
-      message: 'Downstream service error',
-      data: { code: 'STREAM_LIMIT_REACHED' },
+      status_code: 400,
+      message: 'Validation failed',
+      data: [{ property: 'email', constraints: ['email must be valid'] }],
     });
-    expect(JSON.stringify(response.json.mock.calls[0][0])).not.toContain(
-      'internal stack',
-    );
   });
 });

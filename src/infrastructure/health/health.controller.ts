@@ -1,10 +1,7 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import { KafkaGatewayService } from '@/infrastructure/kafka/kafka-gateway.service';
+import { Controller, Get } from '@nestjs/common';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly kafka: KafkaGatewayService) {}
-
   @Get('live')
   live() {
     return { status: 'ok' };
@@ -12,13 +9,6 @@ export class HealthController {
 
   @Get('ready')
   ready() {
-    if (!this.kafka.isReady()) {
-      throw new ServiceUnavailableException('Kafka is not ready');
-    }
-
-    return {
-      status: 'ok',
-      dependencies: { kafka: 'ok' },
-    };
+    return { status: 'ok' };
   }
 }

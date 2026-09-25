@@ -5,8 +5,6 @@ services:
       dockerfile: Dockerfile
       target: runner
     depends_on:
-      kafka:
-        condition: service_started
       postgres:
         condition: service_healthy
     environment:
@@ -18,11 +16,14 @@ services:
       DATABASE_USER: auth_service
       DATABASE_PASSWORD: auth_service_password
       DATABASE_NAME: auth_service
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_CLIENT_ID: auth-service
-      KAFKA_GROUP_ID: auth-service
       JWT_SECRET: local-secret
       TOKEN_EXPIRATION: 1000d
+      REFRESH_TOKEN_EXPIRATION_DAYS: 30
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
+      AUTH_SUCCESS_REDIRECT_URL: ${AUTH_SUCCESS_REDIRECT_URL:-http://localhost:3000/auth/success}
+      AUTH_FAILURE_REDIRECT_URL: ${AUTH_FAILURE_REDIRECT_URL:-http://localhost:3000/auth/failure}
     ports:
       - '3000:3000'
     healthcheck:
@@ -50,25 +51,5 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  kafka:
-    image: apache/kafka:3.7.0
-    ports:
-      - '9092:9092'
-      - '9094:9094'
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:9094,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-
 volumes:
   postgres-data:

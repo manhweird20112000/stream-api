@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { StreamsModule } from './streams/streams.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [StreamsModule],
+  imports: [AuthModule],
 })
 export class ContainerModules {}
