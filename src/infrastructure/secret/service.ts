@@ -5,6 +5,12 @@ export class SecretService extends ConfigService implements IAdapterSecret {
   APP_NAME = this.required('APP_NAME');
   APP_PORT = this.readPort();
 
+  DATABASE_HOST = this.required('DATABASE_HOST');
+  DATABASE_PORT = this.readNumber('DATABASE_PORT', 1, 65535);
+  DATABASE_USER = this.required('DATABASE_USER');
+  DATABASE_PASSWORD = this.required('DATABASE_PASSWORD');
+  DATABASE_NAME = this.required('DATABASE_NAME');
+
   KAFKA_BROKERS = this.readList('KAFKA_BROKERS');
   KAFKA_CLIENT_ID = this.required('KAFKA_CLIENT_ID');
   KAFKA_GROUP_ID = this.required('KAFKA_GROUP_ID');
@@ -32,9 +38,13 @@ export class SecretService extends ConfigService implements IAdapterSecret {
   }
 
   private readPort(): number {
-    const port = Number(this.required('APP_PORT'));
-    if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      throw new Error('APP_PORT must be a valid port');
+    return this.readNumber('APP_PORT', 1, 65535);
+  }
+
+  private readNumber(name: string, min: number, max: number): number {
+    const port = Number(this.required(name));
+    if (!Number.isInteger(port) || port < min || port > max) {
+      throw new Error(`${name} must be a valid port`);
     }
     return port;
   }

@@ -37,12 +37,17 @@ pnpm start:dev
 Required environment:
 
 ```env
-APP_NAME=api-gateway
+APP_NAME=auth-service
 APP_PORT=3000
 NODE_ENV=development
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=auth_service
+DATABASE_PASSWORD=auth_service_password
+DATABASE_NAME=auth_service
 KAFKA_BROKERS=localhost:9094
-KAFKA_CLIENT_ID=api-gateway
-KAFKA_GROUP_ID=api-gateway
+KAFKA_CLIENT_ID=auth-service
+KAFKA_GROUP_ID=auth-service
 JWT_SECRET=change-this-secret-before-deployment
 TOKEN_EXPIRATION=1000d
 ```
@@ -61,13 +66,14 @@ can be used to test event-loop blocking behavior.
 ```bash
 docker compose up -d --build
 docker compose ps
-docker compose logs -f api-gateway
+docker compose logs -f auth-service
 docker compose down
 ```
 
 The local stack contains:
 
-- `api-gateway`: NestJS HTTP service
+- `auth-service`: NestJS HTTP service
+- `postgres`: local PostgreSQL database
 - `kafka`: single-node local broker
 
 ## Kafka Conventions

@@ -5,6 +5,7 @@ import { winstonConfig } from '@/infrastructure/config/logger.config';
 import { ContainerModules } from './modules';
 import { DebugController } from './debug.controller';
 import { HealthModule } from '@/infrastructure/health/health.module';
+import { DatabaseModule } from '@/infrastructure/database/database.module';
 
 const controllers =
   process.env.NODE_ENV === 'development' &&
@@ -16,6 +17,7 @@ const controllers =
   imports: [
     WinstonModule.forRoot(winstonConfig),
     SecretModule,
+    DatabaseModule,
     HealthModule,
     ContainerModules,
   ],
