@@ -2,10 +2,61 @@
   "info": {
     "_postman_id": "0aa19dd4-07cc-42d8-b77f-5b78606205e1",
     "name": "Auth Service",
-    "description": "Postman collection for auth-service. Import the matching local environment, run Register, read the OTP from the email/outbox, run Verify email, then Login/Me/Refresh/Logout. Refresh token is stored by Postman as the HttpOnly `refresh_token` cookie.",
+    "description": "Auth-service collection. Flow: Register -> read OTP from email/outbox -> Verify email -> Me/Refresh/Logout. Login works only after email verification. Refresh token is stored by Postman as HttpOnly cookie `refresh_token`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Live",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/health/live",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "health",
+                "live"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ready",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{apiUrl}}/health/ready",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
     {
       "name": "Auth",
       "item": [
@@ -15,17 +66,18 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('register succeeds', function () {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "",
-                  "const json = pm.response.json();",
-                  "if (json && json.data && json.data.email) {",
-                  "  pm.environment.set('userEmail', json.data.email);",
+                  "const body = pm.response.json();",
+                  "const data = body.data || body;",
+                  "if (data && data.email) {",
+                  "  pm.environment.set('userEmail', data.email);",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -46,16 +98,16 @@
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/register",
+              "raw": "{{apiV1Url}}/auth/register",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "register"
               ]
             },
-            "description": "Creates a pending email/password registration draft and writes an outbox event for email verification. This endpoint does not create a session."
+            "description": "Creates or overwrites a pending email registration draft. Does not login. Check `outbox_events` or email delivery for the OTP/link."
           },
           "response": []
         },
@@ -65,19 +117,20 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('verify succeeds', function () {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "",
-                  "const json = pm.response.json();",
-                  "if (json && json.data && json.data.accessToken) {",
-                  "  pm.environment.set('accessToken', json.data.accessToken);",
-                  "  pm.environment.set('userId', json.data.user.id);",
-                  "  pm.environment.set('userEmail', json.data.user.email);",
+                  "const body = pm.response.json();",
+                  "const data = body.data || body;",
+                  "if (data && data.accessToken) {",
+                  "  pm.environment.set('accessToken', data.accessToken);",
+                  "  pm.environment.set('userId', data.user.id);",
+                  "  pm.environment.set('userEmail', data.user.email);",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -98,16 +151,16 @@
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"code\": \"{{verificationCode}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/verify-email",
+              "raw": "{{apiV1Url}}/auth/verify-email",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "verify-email"
               ]
             },
-            "description": "Activates the pending email/password account with the OTP from mail/outbox, returns accessToken, and sets HttpOnly `refresh_token` cookie."
+            "description": "Consumes OTP, activates account, returns access token, and sets HttpOnly `refresh_token` cookie."
           },
           "response": []
         },
@@ -117,19 +170,20 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('login succeeds', function () {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "",
-                  "const json = pm.response.json();",
-                  "if (json && json.data && json.data.accessToken) {",
-                  "  pm.environment.set('accessToken', json.data.accessToken);",
-                  "  pm.environment.set('userId', json.data.user.id);",
-                  "  pm.environment.set('userEmail', json.data.user.email);",
+                  "const body = pm.response.json();",
+                  "const data = body.data || body;",
+                  "if (data && data.accessToken) {",
+                  "  pm.environment.set('accessToken', data.accessToken);",
+                  "  pm.environment.set('userId', data.user.id);",
+                  "  pm.environment.set('userEmail', data.user.email);",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -150,21 +204,21 @@
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/login",
+              "raw": "{{apiV1Url}}/auth/login",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "login"
               ]
             },
-            "description": "Logs in using email/password. Response body contains accessToken; refresh token is set as HttpOnly cookie `refresh_token`."
+            "description": "Logs in verified email/password account. Sets HttpOnly `refresh_token` cookie."
           },
           "response": []
         },
         {
-          "name": "Get current user",
+          "name": "Me",
           "request": {
             "auth": {
               "type": "bearer",
@@ -184,16 +238,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/auth/me",
+              "raw": "{{apiV1Url}}/auth/me",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "me"
               ]
             },
-            "description": "Returns the current authenticated user. Run Verify email or Login first so `accessToken` is set."
+            "description": "Requires Bearer `accessToken` from Verify email, Login, or Refresh."
           },
           "response": []
         },
@@ -203,19 +257,20 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('refresh succeeds', function () {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "",
-                  "const json = pm.response.json();",
-                  "if (json && json.data && json.data.accessToken) {",
-                  "  pm.environment.set('accessToken', json.data.accessToken);",
-                  "  pm.environment.set('userId', json.data.user.id);",
-                  "  pm.environment.set('userEmail', json.data.user.email);",
+                  "const body = pm.response.json();",
+                  "const data = body.data || body;",
+                  "if (data && data.accessToken) {",
+                  "  pm.environment.set('accessToken', data.accessToken);",
+                  "  pm.environment.set('userId', data.user.id);",
+                  "  pm.environment.set('userEmail', data.user.email);",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -236,16 +291,16 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/refresh",
+              "raw": "{{apiV1Url}}/auth/refresh",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "refresh"
               ]
             },
-            "description": "Rotates refresh token using the Postman cookie jar. Run Verify email or Login first so Postman has the HttpOnly `refresh_token` cookie."
+            "description": "Uses Postman cookie jar HttpOnly `refresh_token`; rotates cookie and returns new access token."
           },
           "response": []
         },
@@ -255,19 +310,20 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('refresh succeeds', function () {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "",
-                  "const json = pm.response.json();",
-                  "if (json && json.data && json.data.accessToken) {",
-                  "  pm.environment.set('accessToken', json.data.accessToken);",
-                  "  pm.environment.set('userId', json.data.user.id);",
-                  "  pm.environment.set('userEmail', json.data.user.email);",
+                  "const body = pm.response.json();",
+                  "const data = body.data || body;",
+                  "if (data && data.accessToken) {",
+                  "  pm.environment.set('accessToken', data.accessToken);",
+                  "  pm.environment.set('userId', data.user.id);",
+                  "  pm.environment.set('userEmail', data.user.email);",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -288,16 +344,16 @@
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/refresh",
+              "raw": "{{apiV1Url}}/auth/refresh",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "refresh"
               ]
             },
-            "description": "Alternative refresh path for API/mobile clients. Paste a raw refresh token into the `refreshToken` environment variable."
+            "description": "Alternative for clients that do not use cookies. Paste raw refresh token into `refreshToken`."
           },
           "response": []
         },
@@ -307,13 +363,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('logout succeeds', function () {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "pm.environment.unset('accessToken');"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -334,16 +390,16 @@
               "raw": "{}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/logout",
+              "raw": "{{apiV1Url}}/auth/logout",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "logout"
               ]
             },
-            "description": "Revokes the current refresh token using the Postman cookie jar and clears the cookie."
+            "description": "Revokes refresh token from Postman cookie jar and clears cookie."
           },
           "response": []
         },
@@ -353,13 +409,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('logout succeeds', function () {",
                   "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
                   "});",
                   "pm.environment.unset('accessToken');"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -380,16 +436,16 @@
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/logout",
+              "raw": "{{apiV1Url}}/auth/logout",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
                 "logout"
               ]
             },
-            "description": "Alternative logout path for API/mobile clients. Paste a raw refresh token into the `refreshToken` environment variable."
+            "description": "Alternative logout for clients that do not use cookies."
           },
           "response": []
         }
@@ -404,9 +460,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/auth/google/start",
+              "raw": "{{apiV1Url}}/auth/google/start",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
@@ -414,7 +470,7 @@
                 "start"
               ]
             },
-            "description": "Starts backend OAuth redirect. In Postman, keep redirects disabled if you only want to inspect the Google Location header. For real login, open this URL in a browser."
+            "description": "Starts backend OAuth redirect. Keep redirects disabled to inspect Google Location header. For real login, open this URL in a browser."
           },
           "protocolProfileBehavior": {
             "followRedirects": false
@@ -427,9 +483,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/auth/google/callback?code={{googleCode}}&state={{googleState}}",
+              "raw": "{{apiV1Url}}/auth/google/callback?code={{googleCode}}&state={{googleState}}",
               "host": [
-                "{{baseUrl}}"
+                "{{apiV1Url}}"
               ],
               "path": [
                 "auth",
@@ -447,7 +503,7 @@
                 }
               ]
             },
-            "description": "Manual debug endpoint. Normal OAuth callback is browser-driven and requires matching `oauth_state` cookie from Start Google OAuth."
+            "description": "Manual debug endpoint. Normal callback requires matching `oauth_state` cookie from Start Google OAuth."
           },
           "protocolProfileBehavior": {
             "followRedirects": false

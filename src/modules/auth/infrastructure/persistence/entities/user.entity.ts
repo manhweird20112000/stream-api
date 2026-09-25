@@ -3,12 +3,10 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { UserStatus } from '../../../domain/auth-user';
-import { AuthIdentityEntity } from './auth-identity.entity';
 
 @Entity('users')
 export class UserEntity {
@@ -37,9 +35,6 @@ export class UserEntity {
     default: UserStatus.PendingVerification,
   })
   status!: UserStatus;
-
-  @OneToMany(() => AuthIdentityEntity, (identity) => identity.user)
-  identities!: AuthIdentityEntity[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

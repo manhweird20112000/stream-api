@@ -18,7 +18,7 @@ export class AuthIdentityEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.identities, {
+  @ManyToOne(() => UserEntity, {
     nullable: false,
     onDelete: 'CASCADE',
   })
