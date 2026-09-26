@@ -252,6 +252,70 @@
           "response": []
         },
         {
+          "name": "Update me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('update me succeeds', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "const data = body.data || body;",
+                  "if (data && data.displayName) {",
+                  "  pm.environment.set('displayName', data.displayName);",
+                  "}",
+                  "if (data && data.avatarUrl) {",
+                  "  pm.environment.set('avatarUrl', data.avatarUrl);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Owner Name\",\n  \"avatarUrl\": \"https://example.com/avatar.png\"\n}"
+            },
+            "url": {
+              "raw": "{{apiV1Url}}/auth/me",
+              "host": [
+                "{{apiV1Url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Updates the authenticated user's display name and avatar URL. Send `null` to clear either field."
+          },
+          "response": []
+        },
+        {
           "name": "Refresh session using cookie",
           "event": [
             {
@@ -400,52 +464,6 @@
               ]
             },
             "description": "Revokes refresh token from Postman cookie jar and clears cookie."
-          },
-          "response": []
-        },
-        {
-          "name": "Logout using body token",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('logout succeeds', function () {",
-                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
-                  "});",
-                  "pm.environment.unset('accessToken');"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-            },
-            "url": {
-              "raw": "{{apiV1Url}}/auth/logout",
-              "host": [
-                "{{apiV1Url}}"
-              ],
-              "path": [
-                "auth",
-                "logout"
-              ]
-            },
-            "description": "Alternative logout for clients that do not use cookies."
           },
           "response": []
         }

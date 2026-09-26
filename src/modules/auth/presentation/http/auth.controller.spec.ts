@@ -1,9 +1,10 @@
 import { AuthController } from './auth.controller';
+import { InvalidCredentialsException } from '@/shared/exceptions';
 
 describe('AuthController', () => {
   const secrets = {
-    AUTH_SUCCESS_REDIRECT_URL: 'http://localhost:3000/auth/success',
-    AUTH_FAILURE_REDIRECT_URL: 'http://localhost:3000/auth/failure',
+    AUTH_SUCCESS_REDIRECT_URL: 'http://localhost:3000/api/v1/auth/success',
+    AUTH_FAILURE_REDIRECT_URL: 'http://localhost:3000/api/v1/auth/failure',
     REFRESH_TOKEN_EXPIRATION_DAYS: 30,
   };
 
@@ -14,6 +15,7 @@ describe('AuthController', () => {
     refresh?: unknown;
     logout?: unknown;
     me?: unknown;
+    updateMe?: unknown;
     verify?: unknown;
     google?: unknown;
   }) {
@@ -24,6 +26,7 @@ describe('AuthController', () => {
       (overrides.refresh ?? {}) as never,
       (overrides.logout ?? {}) as never,
       (overrides.me ?? {}) as never,
+      (overrides.updateMe ?? {}) as never,
       (overrides.verify ?? {}) as never,
       (overrides.google ?? {}) as never,
       secrets as never,
@@ -170,7 +173,7 @@ describe('AuthController', () => {
       }),
     );
     expect(response.redirect).toHaveBeenCalledWith(
-      'http://localhost:3000/auth/success#access_token=access-token-1',
+      'http://localhost:3000/api/v1/auth/success#access_token=access-token-1',
     );
   });
 
@@ -193,8 +196,16 @@ describe('AuthController', () => {
     expect(google.exchangeCode).not.toHaveBeenCalled();
     expect(provider.execute).not.toHaveBeenCalled();
     expect(response.redirect).toHaveBeenCalledWith(
-      'http://localhost:3000/auth/failure?error=oauth_state_invalid',
+      'http://localhost:3000/api/v1/auth/failure?error=oauth_state_invalid',
     );
+  });
+
+  it('returns the OAuth failure error for redirected browsers', () => {
+    const controller = createController({});
+
+    expect(controller.authFailure('oauth_failed')).toEqual({
+      error: 'oauth_failed',
+    });
   });
 
   it('sets refresh token cookie for password login without returning it in the body', async () => {
@@ -283,7 +294,7 @@ describe('AuthController', () => {
     );
   });
 
-  it('logs out by revoking the refresh token and clearing its cookie', async () => {
+  it('logs out by revoking the refresh token from the cookie and clearing it', async () => {
     const logout = {
       execute: jest.fn().mockResolvedValue(undefined),
     };
@@ -294,18 +305,34 @@ describe('AuthController', () => {
 
     await expect(
       controller.logout(
-        { refreshToken: 'body-refresh-token' },
-        undefined,
+        'refresh_token=cookie-refresh-token',
         response as never,
       ),
     ).resolves.toEqual({ revoked: true });
 
     expect(logout.execute).toHaveBeenCalledWith({
-      refreshToken: 'body-refresh-token',
+      refreshToken: 'cookie-refresh-token',
     });
     expect(response.clearCookie).toHaveBeenCalledWith('refresh_token', {
       path: '/api/v1/auth',
     });
+  });
+
+  it('does not accept a body refresh token for logout', async () => {
+    const logout = {
+      execute: jest.fn(),
+    };
+    const response = {
+      clearCookie: jest.fn(),
+    };
+    const controller = createController({ logout });
+
+    await expect(
+      controller.logout(undefined, response as never),
+    ).rejects.toBeInstanceOf(InvalidCredentialsException);
+
+    expect(logout.execute).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
   });
 
   it('loads the current user from the authenticated JWT subject', async () => {
@@ -330,5 +357,38 @@ describe('AuthController', () => {
       avatarUrl: null,
     });
     expect(me.execute).toHaveBeenCalledWith('user-1');
+  });
+
+  it('updates the current user profile from the authenticated JWT subject', async () => {
+    const updateMe = {
+      execute: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        email: 'owner@example.com',
+        displayName: 'Owner Name',
+        avatarUrl: 'https://example.com/avatar.png',
+      }),
+    };
+    const controller = createController({ updateMe });
+
+    await expect(
+      controller.updateMe(
+        {
+          user: { sub: 'user-1' },
+        } as never,
+        {
+          displayName: 'Owner Name',
+          avatarUrl: 'https://example.com/avatar.png',
+        },
+      ),
+    ).resolves.toEqual({
+      id: 'user-1',
+      email: 'owner@example.com',
+      displayName: 'Owner Name',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+    expect(updateMe.execute).toHaveBeenCalledWith('user-1', {
+      displayName: 'Owner Name',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
   });
 });

@@ -61,6 +61,20 @@ ENABLE_DEBUG_ROUTES=true
 When enabled in development, `GET /api/debug/block-event-loop?durationMs=1000`
 can be used to test event-loop blocking behavior.
 
+Local email delivery:
+
+```env
+EMAIL_DELIVERY_ENABLED=true
+SMTP_HOST=localhost
+SMTP_PORT=1025
+MAIL_FROM=no-reply@stream.local
+```
+
+When using Docker Compose, open Mailpit at `http://localhost:8025` to view
+verification emails queued by `POST /api/v1/auth/register`. Registration writes
+an outbox event in the same database transaction; a background worker sends
+pending email events and leaves failed events pending for retry.
+
 ## Docker
 
 ```bash
@@ -74,6 +88,7 @@ The local stack contains:
 
 - `auth-service`: NestJS HTTP service
 - `postgres`: local PostgreSQL database
+- `mailpit`: local SMTP inbox for development email
 - `kafka`: single-node local broker
 
 ## Kafka Conventions

@@ -4,7 +4,9 @@ import {
   Get,
   Headers,
   Ip,
+  Logger,
   Post,
+  Patch,
   Query,
   Req,
   Res,
@@ -21,11 +23,13 @@ import { LoginWithProviderUseCase } from '../../application/use-cases/login-with
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterWithPasswordUseCase } from '../../application/use-cases/register-with-password.use-case';
+import { UpdateCurrentUserUseCase } from '../../application/use-cases/update-current-user.use-case';
 import { VerifyEmailUseCase } from '../../application/use-cases/verify-email.use-case';
 import { GoogleOAuthClient } from '../../infrastructure/google-oauth.client';
 import { LoginRequest } from './dto/login.request';
 import { RefreshTokenRequest } from './dto/refresh-token.request';
 import { RegisterRequest } from './dto/register.request';
+import { UpdateMeRequest } from './dto/update-me.request';
 import { VerifyEmailRequest } from './dto/verify-email.request';
 
 const OAUTH_STATE_COOKIE = 'oauth_state';
@@ -42,6 +46,8 @@ interface AuthenticatedRequest extends Request {
 
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly registerWithPassword: RegisterWithPasswordUseCase,
     private readonly loginWithPassword: LoginWithPasswordUseCase,
@@ -49,6 +55,7 @@ export class AuthController {
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logoutSession: LogoutUseCase,
     private readonly getCurrentUser: GetCurrentUserUseCase,
+    private readonly updateCurrentUser: UpdateCurrentUserUseCase,
     private readonly verifyEmail: VerifyEmailUseCase,
     private readonly google: GoogleOAuthClient,
     private readonly secrets: IAdapterSecret,
@@ -101,12 +108,11 @@ export class AuthController {
 
   @Post('logout')
   async logout(
-    @Body() body: RefreshTokenRequest,
     @Headers('cookie') cookie: string | undefined,
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ revoked: true }> {
     await this.logoutSession.execute({
-      refreshToken: this.readRefreshToken(body, cookie),
+      refreshToken: this.readRefreshTokenFromCookie(cookie),
     });
     response.clearCookie(REFRESH_TOKEN_COOKIE, {
       path: REFRESH_TOKEN_COOKIE_PATH,
@@ -118,6 +124,15 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() request: AuthenticatedRequest) {
     return this.getCurrentUser.execute(request.user.sub);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  updateMe(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: UpdateMeRequest,
+  ) {
+    return this.updateCurrentUser.execute(request.user.sub, body);
   }
 
   @Get('google/start')
@@ -154,9 +169,22 @@ export class AuthController {
       const result = await this.loginWithProvider.execute(profile);
       this.setRefreshCookie(response, result.refreshToken);
       response.redirect(this.successRedirectUrl(result.accessToken));
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `Google OAuth callback failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       response.redirect(this.failureRedirectUrl('oauth_failed'));
     }
+  }
+
+  @Get('success')
+  authSuccess(): { message: string } {
+    return { message: 'Authentication succeeded' };
+  }
+
+  @Get('failure')
+  authFailure(@Query('error') error: string | undefined): { error: string } {
+    return { error: error ?? 'oauth_failed' };
   }
 
   private successRedirectUrl(accessToken: string): string {
@@ -199,6 +227,16 @@ export class AuthController {
   ): string {
     const token =
       body?.refreshToken ?? this.readCookie(cookieHeader, REFRESH_TOKEN_COOKIE);
+
+    if (!token) {
+      throw new InvalidCredentialsException();
+    }
+
+    return token;
+  }
+
+  private readRefreshTokenFromCookie(cookieHeader: string | undefined): string {
+    const token = this.readCookie(cookieHeader, REFRESH_TOKEN_COOKIE);
 
     if (!token) {
       throw new InvalidCredentialsException();

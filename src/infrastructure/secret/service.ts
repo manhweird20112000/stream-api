@@ -10,6 +10,10 @@ export class SecretService extends ConfigService implements IAdapterSecret {
   DATABASE_USER = this.required('DATABASE_USER');
   DATABASE_PASSWORD = this.required('DATABASE_PASSWORD');
   DATABASE_NAME = this.required('DATABASE_NAME');
+  DATABASE_MIGRATIONS_RUN = this.optionalBoolean(
+    'DATABASE_MIGRATIONS_RUN',
+    process.env.NODE_ENV !== 'production',
+  );
 
   JWT_SECRET = this.required('JWT_SECRET');
   TOKEN_EXPIRATION = this.required('TOKEN_EXPIRATION');
@@ -20,16 +24,24 @@ export class SecretService extends ConfigService implements IAdapterSecret {
     365,
   );
 
+  EMAIL_DELIVERY_ENABLED = this.optionalBoolean(
+    'EMAIL_DELIVERY_ENABLED',
+    false,
+  );
+  SMTP_HOST = this.optional('SMTP_HOST', 'localhost');
+  SMTP_PORT = this.optionalNumber('SMTP_PORT', 1025, 1, 65535);
+  MAIL_FROM = this.optional('MAIL_FROM', 'no-reply@stream.local');
+
   GOOGLE_CLIENT_ID = this.optional('GOOGLE_CLIENT_ID');
   GOOGLE_CLIENT_SECRET = this.optional('GOOGLE_CLIENT_SECRET');
   GOOGLE_CALLBACK_URL = this.optional('GOOGLE_CALLBACK_URL');
   AUTH_SUCCESS_REDIRECT_URL = this.optional(
     'AUTH_SUCCESS_REDIRECT_URL',
-    'http://localhost:3000/auth/success',
+    'http://localhost:3000/api/v1/auth/success',
   );
   AUTH_FAILURE_REDIRECT_URL = this.optional(
     'AUTH_FAILURE_REDIRECT_URL',
-    'http://localhost:3000/auth/failure',
+    'http://localhost:3000/api/v1/auth/failure',
   );
 
   private required(name: string): string {
@@ -70,5 +82,22 @@ export class SecretService extends ConfigService implements IAdapterSecret {
       throw new Error(`${name} must be a valid number`);
     }
     return value;
+  }
+
+  private optionalBoolean(name: string, defaultValue: boolean): boolean {
+    const raw = this.get<string>(name);
+    if (!raw) {
+      return defaultValue;
+    }
+
+    if (raw === 'true') {
+      return true;
+    }
+
+    if (raw === 'false') {
+      return false;
+    }
+
+    throw new Error(`${name} must be true or false`);
   }
 }

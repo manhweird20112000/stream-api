@@ -8,6 +8,7 @@ import { LoginWithProviderUseCase } from '../src/modules/auth/application/use-ca
 import { LogoutUseCase } from '../src/modules/auth/application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../src/modules/auth/application/use-cases/refresh-session.use-case';
 import { RegisterWithPasswordUseCase } from '../src/modules/auth/application/use-cases/register-with-password.use-case';
+import { UpdateCurrentUserUseCase } from '../src/modules/auth/application/use-cases/update-current-user.use-case';
 import { VerifyEmailUseCase } from '../src/modules/auth/application/use-cases/verify-email.use-case';
 import { GetCurrentUserUseCase } from '../src/modules/auth/application/use-cases/get-current-user.use-case';
 import { GoogleOAuthClient } from '../src/modules/auth/infrastructure/google-oauth.client';
@@ -26,6 +27,7 @@ describe('auth gateway (e2e)', () => {
   const refresh = { execute: jest.fn() };
   const logout = { execute: jest.fn() };
   const me = { execute: jest.fn() };
+  const updateMe = { execute: jest.fn() };
   const google = { createAuthorizationUrl: jest.fn(), exchangeCode: jest.fn() };
 
   beforeAll(async () => {
@@ -41,12 +43,13 @@ describe('auth gateway (e2e)', () => {
         { provide: RefreshSessionUseCase, useValue: refresh },
         { provide: LogoutUseCase, useValue: logout },
         { provide: GetCurrentUserUseCase, useValue: me },
+        { provide: UpdateCurrentUserUseCase, useValue: updateMe },
         { provide: GoogleOAuthClient, useValue: google },
         {
           provide: IAdapterSecret,
           useValue: {
-            AUTH_SUCCESS_REDIRECT_URL: 'http://localhost:3000/auth/success',
-            AUTH_FAILURE_REDIRECT_URL: 'http://localhost:3000/auth/failure',
+            AUTH_SUCCESS_REDIRECT_URL: 'http://localhost:3000/api/v1/auth/success',
+            AUTH_FAILURE_REDIRECT_URL: 'http://localhost:3000/api/v1/auth/failure',
             REFRESH_TOKEN_EXPIRATION_DAYS: 30,
           },
         },
@@ -161,5 +164,45 @@ describe('auth gateway (e2e)', () => {
       .expect(200);
 
     expect(me.execute).toHaveBeenCalledWith('user-1');
+  });
+
+  it('updates me from the verified JWT subject', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    updateMe.execute.mockResolvedValue({
+      id: 'user-1',
+      email: 'owner@example.com',
+      displayName: 'Owner Name',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+
+    const response = await request(app.getHttpServer())
+      .patch('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        displayName: 'Owner Name',
+        avatarUrl: 'https://example.com/avatar.png',
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      id: 'user-1',
+      email: 'owner@example.com',
+      displayName: 'Owner Name',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+    expect(updateMe.execute).toHaveBeenCalledWith('user-1', {
+      displayName: 'Owner Name',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+  });
+
+  it('serves the OAuth failure redirect target', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/auth/failure?error=oauth_failed')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      error: 'oauth_failed',
+    });
   });
 });

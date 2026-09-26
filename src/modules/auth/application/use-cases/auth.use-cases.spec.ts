@@ -27,6 +27,7 @@ import { LoginWithProviderUseCase } from './login-with-provider.use-case';
 import { LogoutUseCase } from './logout.use-case';
 import { RefreshSessionUseCase } from './refresh-session.use-case';
 import { RegisterWithPasswordUseCase } from './register-with-password.use-case';
+import { UpdateCurrentUserUseCase } from './update-current-user.use-case';
 import { VerifyEmailUseCase } from './verify-email.use-case';
 
 class InMemoryUserRepository implements AuthUserRepository {
@@ -238,6 +239,7 @@ describe('auth use cases', () => {
   let refresh: RefreshSessionUseCase;
   let logout: LogoutUseCase;
   let me: GetCurrentUserUseCase;
+  let updateMe: UpdateCurrentUserUseCase;
 
   beforeEach(() => {
     users = new InMemoryUserRepository();
@@ -269,6 +271,7 @@ describe('auth use cases', () => {
     refresh = new RefreshSessionUseCase(refreshTokens, sessions);
     logout = new LogoutUseCase(refreshTokens, sessions);
     me = new GetCurrentUserUseCase(users);
+    updateMe = new UpdateCurrentUserUseCase(users);
   });
 
   async function registerAndVerify() {
@@ -427,5 +430,26 @@ describe('auth use cases', () => {
       avatarUrl: null,
     });
   });
-});
 
+  it('updates the current user profile', async () => {
+    const initial = await registerAndVerify();
+
+    await expect(
+      updateMe.execute(initial.user.id, {
+        displayName: '  Owner Name  ',
+        avatarUrl: 'https://example.com/avatar.png',
+      }),
+    ).resolves.toEqual({
+      id: 'user-1',
+      email: 'owner@example.com',
+      displayName: 'Owner Name',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+    expect(users.records[0]).toEqual(
+      expect.objectContaining({
+        displayName: 'Owner Name',
+        avatarUrl: 'https://example.com/avatar.png',
+      }),
+    );
+  });
+});

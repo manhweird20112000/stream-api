@@ -1,20 +1,24 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SecretModule } from '@/infrastructure/secret';
+import { IAdapterSecret } from '@/infrastructure/secret/adapter';
+import { CreateAuthTables20260925000000 } from './migrations/20260925000000-create-auth-tables';
 
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
+      imports: [SecretModule],
+      inject: [IAdapterSecret],
+      useFactory: (secrets: IAdapterSecret) => ({
         type: 'postgres',
-        host: config.getOrThrow<string>('DATABASE_HOST'),
-        port: Number(config.getOrThrow<string>('DATABASE_PORT')),
-        username: config.getOrThrow<string>('DATABASE_USER'),
-        password: config.getOrThrow<string>('DATABASE_PASSWORD'),
-        database: config.getOrThrow<string>('DATABASE_NAME'),
+        host: secrets.DATABASE_HOST,
+        port: secrets.DATABASE_PORT,
+        username: secrets.DATABASE_USER,
+        password: secrets.DATABASE_PASSWORD,
+        database: secrets.DATABASE_NAME,
         autoLoadEntities: true,
+        migrations: [CreateAuthTables20260925000000],
+        migrationsRun: secrets.DATABASE_MIGRATIONS_RUN,
         synchronize: false,
       }),
     }),
