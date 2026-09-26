@@ -24,7 +24,7 @@ GET /api/health/ready
 GET /api/docs
 ```
 
-Local URL: `http://localhost:3000`.
+Local Docker URL: `http://localhost:13002`.
 
 ## Local Development
 
@@ -37,17 +37,17 @@ pnpm start:dev
 Required environment:
 
 ```env
-APP_NAME=auth-service
+APP_NAME=stream-service
 APP_PORT=3000
 NODE_ENV=development
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
-DATABASE_USER=auth_service
-DATABASE_PASSWORD=auth_service_password
-DATABASE_NAME=auth_service
-KAFKA_BROKERS=localhost:9094
-KAFKA_CLIENT_ID=auth-service
-KAFKA_GROUP_ID=auth-service
+DATABASE_USER=stream_service
+DATABASE_PASSWORD=stream_service_password
+DATABASE_NAME=stream_service
+KAFKA_BROKERS=localhost:19094
+KAFKA_CLIENT_ID=stream-service
+KAFKA_GROUP_ID=stream-service
 JWT_SECRET=change-this-secret-before-deployment
 TOKEN_EXPIRATION=1000d
 ```
@@ -66,15 +66,17 @@ can be used to test event-loop blocking behavior.
 ```bash
 docker compose up -d --build
 docker compose ps
-docker compose logs -f auth-service
+docker compose logs -f stream-service
 docker compose down
 ```
 
 The local stack contains:
 
-- `auth-service`: NestJS HTTP service
+- `stream-service`: NestJS HTTP service
 - `postgres`: local PostgreSQL database
-- `kafka`: single-node local broker
+
+Kafka and Kong are deployed from the root stack. This service joins the shared
+`stream-net` Docker network and uses `KAFKA_BROKERS=kafka:9092` in Docker.
 
 ## Kafka Conventions
 
