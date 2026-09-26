@@ -10,8 +10,12 @@ describe('SecretService', () => {
     'DATABASE_PASSWORD',
     'DATABASE_NAME',
     'DATABASE_MIGRATIONS_RUN',
+    'KAFKA_BROKERS',
+    'KAFKA_CLIENT_ID',
+    'KAFKA_GROUP_ID',
     'JWT_SECRET',
     'TOKEN_EXPIRATION',
+    'API_GATEWAY_URL',
     'EMAIL_DELIVERY_ENABLED',
     'SMTP_HOST',
     'SMTP_PORT',
@@ -31,8 +35,12 @@ describe('SecretService', () => {
       DATABASE_PASSWORD: 'auth_service_password',
       DATABASE_NAME: 'auth_service',
       DATABASE_MIGRATIONS_RUN: 'true',
+      KAFKA_BROKERS: 'localhost:9092,localhost:9093',
+      KAFKA_CLIENT_ID: 'auth-service',
+      KAFKA_GROUP_ID: 'auth-service',
       JWT_SECRET: 'test-secret',
       TOKEN_EXPIRATION: '1d',
+      API_GATEWAY_URL: 'http://localhost:8080',
       EMAIL_DELIVERY_ENABLED: 'true',
       SMTP_HOST: 'localhost',
       SMTP_PORT: '1025',
@@ -59,6 +67,13 @@ describe('SecretService', () => {
     expect(new SecretService().DATABASE_MIGRATIONS_RUN).toBe(true);
   });
 
+  it('parses Kafka brokers from a comma-separated list', () => {
+    expect(new SecretService().KAFKA_BROKERS).toEqual([
+      'localhost:9092',
+      'localhost:9093',
+    ]);
+  });
+
   it('parses email delivery config', () => {
     const secrets = new SecretService();
 
@@ -66,6 +81,20 @@ describe('SecretService', () => {
     expect(secrets.SMTP_HOST).toBe('localhost');
     expect(secrets.SMTP_PORT).toBe(1025);
     expect(secrets.MAIL_FROM).toBe('no-reply@stream.local');
+  });
+
+  it('derives public auth URLs from the API gateway URL', () => {
+    const secrets = new SecretService();
+
+    expect(secrets.GOOGLE_CALLBACK_URL).toBe(
+      'http://localhost:8080/api/v1/auth/google/callback',
+    );
+    expect(secrets.AUTH_SUCCESS_REDIRECT_URL).toBe(
+      'http://localhost:8080/api/v1/auth/success',
+    );
+    expect(secrets.AUTH_FAILURE_REDIRECT_URL).toBe(
+      'http://localhost:8080/api/v1/auth/failure',
+    );
   });
 
   it('rejects a missing JWT secret', () => {

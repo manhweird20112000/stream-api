@@ -44,6 +44,7 @@ import {
   TypeOrmEmailRegistrationRepository,
 } from './infrastructure/persistence/repositories';
 import { AuthController } from './presentation/http/auth.controller';
+import { AuthKafkaController } from './presentation/kafka/auth.kafka.controller';
 
 @Module({
   imports: [
@@ -68,7 +69,7 @@ import { AuthController } from './presentation/http/auth.controller';
     }),
     SecretModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AuthKafkaController],
   providers: [
     AuthAccountService,
     SessionIssuerService,

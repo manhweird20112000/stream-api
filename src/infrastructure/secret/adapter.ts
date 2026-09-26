@@ -9,6 +9,10 @@ export abstract class IAdapterSecret {
   abstract DATABASE_NAME: string;
   abstract DATABASE_MIGRATIONS_RUN: boolean;
 
+  abstract KAFKA_BROKERS: string[];
+  abstract KAFKA_CLIENT_ID: string;
+  abstract KAFKA_GROUP_ID: string;
+
   abstract JWT_SECRET: string;
   abstract TOKEN_EXPIRATION: string;
   abstract REFRESH_TOKEN_EXPIRATION_DAYS: number;
@@ -18,6 +22,7 @@ export abstract class IAdapterSecret {
   abstract SMTP_PORT: number;
   abstract MAIL_FROM: string;
 
+  abstract API_GATEWAY_URL: string;
   abstract GOOGLE_CLIENT_ID: string;
   abstract GOOGLE_CLIENT_SECRET: string;
   abstract GOOGLE_CALLBACK_URL: string;

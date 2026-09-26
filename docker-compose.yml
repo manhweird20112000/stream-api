@@ -13,12 +13,16 @@ services:
       APP_NAME: auth-service
       APP_PORT: 3000
       NODE_ENV: production
+      API_GATEWAY_URL: ${API_GATEWAY_URL:-http://localhost:3000}
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_USER: auth_service
       DATABASE_PASSWORD: auth_service_password
       DATABASE_NAME: auth_service
       DATABASE_MIGRATIONS_RUN: 'true'
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_CLIENT_ID: auth-service
+      KAFKA_GROUP_ID: auth-service
       JWT_SECRET: local-secret
       TOKEN_EXPIRATION: 1000d
       REFRESH_TOKEN_EXPIRATION_DAYS: 30
@@ -28,11 +32,11 @@ services:
       MAIL_FROM: no-reply@stream.local
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
-      AUTH_SUCCESS_REDIRECT_URL: ${AUTH_SUCCESS_REDIRECT_URL:-http://localhost:3000/api/v1/auth/success}
-      AUTH_FAILURE_REDIRECT_URL: ${AUTH_FAILURE_REDIRECT_URL:-http://localhost:3000/api/v1/auth/failure}
+      GOOGLE_CALLBACK_URL: http://localhost:3000/api/v1/auth/google/callback
+      AUTH_SUCCESS_REDIRECT_URL: http://localhost:3000/api/v1/auth/success
+      AUTH_FAILURE_REDIRECT_URL: http://localhost:3000/api/v1/auth/failure
     ports:
-      - '3000:3000'
+      - '13001:3000'
     healthcheck:
       test:
         [
@@ -42,6 +46,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - default
+      - stream-net
 
   postgres:
     image: postgres:16-alpine
@@ -64,5 +71,10 @@ services:
     ports:
       - '1025:1025'
       - '8025:8025'
+
 volumes:
   postgres-data:
+
+networks:
+  stream-net:
+    external: true

@@ -1,20 +1,19 @@
 # Stream API Service
 
-NestJS service base for the Stream system. This repository currently runs as
-the client-facing HTTP API Gateway: it validates HTTP requests, authenticates
-callers, and sends business commands to downstream services through Kafka.
+NestJS authentication service for the Stream system. It exposes HTTP endpoints
+for email/password auth, Google OAuth, JWT sessions, refresh-token rotation,
+profile updates, and local development email delivery.
 
 The shared infrastructure is intentionally reusable for other services:
 configuration, logging, validation, exception handling, health checks, JWT auth,
-and Kafka integration can be kept. Gateway-specific modules should be renamed
-or removed when this codebase is used for a business service.
+database access, and local email tooling can be kept.
 
 ## Runtime Model
 
-Client traffic enters through HTTP under `/api`. Gateway modules handle request
-validation and authentication, then publish Kafka command envelopes to business
-services. Business services own domain rules, persistence, and service-to-service
-events.
+Client traffic enters through the API Gateway under `/api`. The API Gateway
+publishes Kafka request/response commands to this auth-service. The auth module
+owns user registration, email verification, password login, Google OAuth,
+refresh-token sessions, and current-user profile data.
 
 Operational endpoints:
 
@@ -24,7 +23,7 @@ GET /api/health/ready
 GET /api/docs
 ```
 
-Local URL: `http://localhost:3000`.
+Local API Gateway URL: `http://localhost:3000`.
 
 ## Local Development
 
@@ -40,17 +39,23 @@ Required environment:
 APP_NAME=auth-service
 APP_PORT=3000
 NODE_ENV=development
+API_GATEWAY_URL=http://localhost:3000
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USER=auth_service
 DATABASE_PASSWORD=auth_service_password
 DATABASE_NAME=auth_service
-KAFKA_BROKERS=localhost:9094
+KAFKA_BROKERS=localhost:19094
 KAFKA_CLIENT_ID=auth-service
 KAFKA_GROUP_ID=auth-service
 JWT_SECRET=change-this-secret-before-deployment
 TOKEN_EXPIRATION=1000d
 ```
+
+`APP_PORT` is the internal auth-service port. `API_GATEWAY_URL` is the public
+URL used by clients and OAuth redirects. Set `GOOGLE_CALLBACK_URL`,
+`AUTH_SUCCESS_REDIRECT_URL`, or `AUTH_FAILURE_REDIRECT_URL` only when they need
+to differ from the gateway defaults.
 
 Optional debug route:
 
@@ -86,46 +91,81 @@ docker compose down
 
 The local stack contains:
 
-- `auth-service`: NestJS HTTP service
+- `auth-service`: Kafka auth consumer with HTTP health/docs on `http://localhost:13001`
 - `postgres`: local PostgreSQL database
 - `mailpit`: local SMTP inbox for development email
-- `kafka`: single-node local broker
 
-## Kafka Conventions
+Kafka and Kong are deployed from the root stack. This service joins the shared
+`stream-net` Docker network and uses `KAFKA_BROKERS=kafka:9092` in Docker.
 
-- `stream.commands`: commands such as `stream.create`
-- `stream.events`: facts published by business services
-- `stream.commands.reply`: Nest Kafka request/reply results for synchronous
-  HTTP responses
+## Kafka Commands
 
-Example command envelope:
+The API Gateway should use Nest `ClientKafkaProxy.send()` with these topics:
 
-```json
-{
-  "requestId": "req-123",
-  "userId": "user-1",
-  "type": "stream.create",
-  "payload": {
-    "title": "Launch stream"
-  }
-}
+```text
+auth.register
+auth.verify_email
+auth.login
+auth.refresh
+auth.logout
+auth.me
+auth.update_me
+auth.google_start
+auth.google_callback
+```
+
+For request/response topics, the gateway must call `subscribeToResponseOf()`
+before `connect()` for every topic it sends.
+
+## PM2 Production
+
+Build first, then run the compiled service through PM2:
+
+```bash
+pnpm build
+pnpm pm2:start
+```
+
+The PM2 ecosystem config runs `dist/main.js` in cluster mode with one instance:
+
+```text
+exec_mode: cluster
+instances: 1
+TZ: Asia/Bangkok
+```
+
+Useful commands:
+
+```bash
+pnpm pm2:status
+pnpm pm2:logs
+pnpm pm2:reload
+pnpm pm2:restart
+pnpm pm2:stop
+pnpm pm2:delete
+```
+
+Install PM2 on the server if it is not already available:
+
+```bash
+npm install -g pm2
 ```
 
 ## HTTP Example
 
 ```http
-POST /api/streams
-Authorization: Bearer <jwt>
+POST /api/v1/auth/login
 Content-Type: application/json
 
 {
-  "title": "Launch stream",
-  "description": "Demo"
+  "email": "owner@example.com",
+  "password": "secret123"
 }
 ```
 
-The service validates the request, verifies the JWT, and sends a
-`stream.create` command to Kafka.
+The API Gateway validates the HTTP request, sends `auth.login` to Kafka, sets
+the returned refresh token as an HttpOnly cookie, and returns the access token
+to the client.
 
 ## Project Structure
 
@@ -137,19 +177,19 @@ src/
 |-- infrastructure/
 |   |-- config/
 |   |-- health/
-|   |-- kafka/
+|   |-- database/
 |   `-- secret/
 |
 |-- modules/
 |   |-- index.ts
-|   `-- streams/
+|   `-- auth/
 |       |-- application/
-|       |   |-- dto/
-|       |   `-- use-cases/
+|       |-- domain/
+|       |-- infrastructure/
 |       |-- presentation/
 |       |   `-- http/
 |       |       `-- dto/
-|       `-- streams.module.ts
+|       `-- auth.module.ts
 |
 `-- shared/
     |-- application/
@@ -169,8 +209,8 @@ src/
 Keep the shared infrastructure that service needs. Replace gateway-specific
 names, Docker service names, env values, and feature modules.
 
-For a business service, add the service's domain, persistence, repositories, and
-Kafka consumers there instead of keeping the API Gateway contract module.
+For a business service, add that service's domain, persistence, repositories,
+and HTTP or worker entry points there instead of keeping auth-specific modules.
 
 ## Quality Checks
 

@@ -4,6 +4,7 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { HttpExceptionFilter } from '@/shared/presentation/filters/http-exception.filter';
 import { HttpSuccessInterceptor } from '@/shared/presentation/interceptors/http-success.interceptor';
 import { RequestMethod, VersioningType } from '@nestjs/common';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { IAdapterSecret } from '@/infrastructure/secret/adapter';
 import { useContainer } from 'class-validator';
@@ -43,8 +44,23 @@ async function bootstrap() {
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, swaggerDocument);
 
-  const { APP_PORT } = app.get(IAdapterSecret);
+  const { APP_PORT, KAFKA_BROKERS, KAFKA_CLIENT_ID, KAFKA_GROUP_ID } =
+    app.get(IAdapterSecret);
 
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        clientId: KAFKA_CLIENT_ID,
+        brokers: KAFKA_BROKERS,
+      },
+      consumer: {
+        groupId: KAFKA_GROUP_ID,
+      },
+    },
+  });
+
+  await app.startAllMicroservices();
   await app.listen(APP_PORT);
 }
 
