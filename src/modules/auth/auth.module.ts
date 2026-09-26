@@ -10,6 +10,7 @@ import { AuthController } from './presentation/http/auth.controller';
 @Module({
   imports: [
     KafkaModule,
+    SecretModule,
     JwtModule.registerAsync({
       imports: [SecretModule],
       inject: [IAdapterSecret],
@@ -23,4 +24,3 @@ import { AuthController } from './presentation/http/auth.controller';
   providers: [AuthUseCase, JwtAuthGuard],
 })
 export class AuthModule {}
-

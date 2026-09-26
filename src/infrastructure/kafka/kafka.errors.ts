@@ -9,6 +9,7 @@ export class KafkaGatewayDownstreamError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    readonly statusCode = 502,
   ) {
     super(message);
     this.name = 'KafkaGatewayDownstreamError';

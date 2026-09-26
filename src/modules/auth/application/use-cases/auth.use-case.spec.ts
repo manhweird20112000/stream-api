@@ -10,89 +10,61 @@ describe('AuthUseCase', () => {
     useCase = new AuthUseCase(kafka as never);
   });
 
-  it('publishes an auth.register command envelope', async () => {
+  it('sends register payload to the auth.register topic', async () => {
     kafka.request.mockResolvedValue({ userId: 'user-1' });
 
-    await expect(
-      useCase.register({
-        email: 'user@example.com',
-        password: 'secret123',
-        name: 'User',
-      }),
-    ).resolves.toEqual({ userId: 'user-1' });
+    const input = {
+      email: 'user@example.com',
+      password: 'secret123',
+      name: 'User',
+    };
 
-    expect(kafka.request).toHaveBeenCalledWith(
-      AUTH_TOPICS.commands,
-      expect.objectContaining({
-        requestId: expect.any(String),
-        type: 'auth.register',
-        payload: {
-          email: 'user@example.com',
-          password: 'secret123',
-          name: 'User',
-        },
-      }),
-    );
+    await expect(useCase.register(input)).resolves.toEqual({
+      userId: 'user-1',
+    });
+
+    expect(kafka.request).toHaveBeenCalledWith(AUTH_TOPICS.register, input);
   });
 
-  it('publishes an auth.login command envelope', async () => {
+  it('sends login payload to the auth.login topic', async () => {
     kafka.request.mockResolvedValue({ accessToken: 'access-token' });
 
-    await expect(
-      useCase.login({
-        email: 'user@example.com',
-        password: 'secret123',
-      }),
-    ).resolves.toEqual({ accessToken: 'access-token' });
+    const input = {
+      email: 'user@example.com',
+      password: 'secret123',
+    };
 
-    expect(kafka.request).toHaveBeenCalledWith(
-      AUTH_TOPICS.commands,
-      expect.objectContaining({
-        requestId: expect.any(String),
-        type: 'auth.login',
-        payload: {
-          email: 'user@example.com',
-          password: 'secret123',
-        },
-      }),
-    );
+    await expect(useCase.login(input)).resolves.toEqual({
+      accessToken: 'access-token',
+    });
+
+    expect(kafka.request).toHaveBeenCalledWith(AUTH_TOPICS.login, input);
   });
 
-  it('publishes user scoped auth commands', async () => {
+  it('sends refresh, logout, and me payloads to auth topics', async () => {
     kafka.request
       .mockResolvedValueOnce({ accessToken: 'new-access-token' })
       .mockResolvedValueOnce({ success: true })
       .mockResolvedValueOnce({ userId: 'user-1' });
 
     await useCase.refresh({ refreshToken: 'refresh-token' });
-    await useCase.logout({ userId: 'user-1' });
+    await useCase.logout({ refreshToken: 'refresh-token' });
     await useCase.me({ userId: 'user-1' });
 
     expect(kafka.request).toHaveBeenNthCalledWith(
       1,
-      AUTH_TOPICS.commands,
-      expect.objectContaining({
-        type: 'auth.refresh',
-        payload: { refreshToken: 'refresh-token' },
-      }),
+      AUTH_TOPICS.refresh,
+      { refreshToken: 'refresh-token' },
     );
     expect(kafka.request).toHaveBeenNthCalledWith(
       2,
-      AUTH_TOPICS.commands,
-      expect.objectContaining({
-        userId: 'user-1',
-        type: 'auth.logout',
-        payload: {},
-      }),
+      AUTH_TOPICS.logout,
+      { refreshToken: 'refresh-token' },
     );
     expect(kafka.request).toHaveBeenNthCalledWith(
       3,
-      AUTH_TOPICS.commands,
-      expect.objectContaining({
-        userId: 'user-1',
-        type: 'auth.me',
-        payload: {},
-      }),
+      AUTH_TOPICS.me,
+      { userId: 'user-1' },
     );
   });
 });

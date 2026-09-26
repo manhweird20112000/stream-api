@@ -11,9 +11,29 @@ export interface LoginInput {
 
 export interface RefreshInput {
   refreshToken: string;
+  userAgent?: string | null;
+  ipAddress?: string | null;
 }
 
 export interface UserScopedInput {
   userId: string;
 }
 
+export interface LogoutInput {
+  refreshToken: string;
+}
+
+export interface UpdateMeInput {
+  userId: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface VerifyEmailInput {
+  email: string;
+  code: string;
+}
+
+export interface GoogleCallbackInput {
+  code: string;
+}

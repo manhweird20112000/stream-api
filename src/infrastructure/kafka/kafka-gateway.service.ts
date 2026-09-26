@@ -25,6 +25,7 @@ interface KafkaReplyEnvelope<TData> {
   error?: {
     code?: string;
     message?: string;
+    statusCode?: number;
   };
 }
 
@@ -43,7 +44,15 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     this.destroyed = false;
     this.client.subscribeToResponseOf(STREAM_TOPICS.commands);
-    this.client.subscribeToResponseOf(AUTH_TOPICS.commands);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.register);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.verifyEmail);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.login);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.refresh);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.logout);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.me);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.updateMe);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.googleStart);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.googleCallback);
     this.statusSubscription = this.client.status.subscribe((status) => {
       if (status !== 'connected') {
         this.ready = false;
@@ -71,23 +80,25 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
 
   async request<TData, TPayload>(
     topic: string,
-    message: KafkaCommandEnvelope<TPayload>,
+    message: TPayload,
     timeoutMs = 5000,
   ): Promise<TData> {
     try {
       const reply = await firstValueFrom(
         this.client
-          .send<KafkaReplyEnvelope<TData>, KafkaCommandEnvelope<TPayload>>(
-            topic,
-            message,
-          )
+          .send<KafkaReplyEnvelope<TData> | TData, TPayload>(topic, message)
           .pipe(timeout({ first: timeoutMs })),
       );
+
+      if (!KafkaGatewayService.isReplyEnvelope<TData>(reply)) {
+        return reply;
+      }
 
       if (!reply.ok) {
         throw new KafkaGatewayDownstreamError(
           reply.error?.code ?? 'DOWNSTREAM_ERROR',
           reply.error?.message ?? 'Downstream service error',
+          reply.error?.statusCode,
         );
       }
 
@@ -106,6 +117,17 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
         'Downstream service error',
       );
     }
+  }
+
+  private static isReplyEnvelope<TData>(
+    value: unknown,
+  ): value is KafkaReplyEnvelope<TData> {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      'ok' in value &&
+      typeof (value as { ok: unknown }).ok === 'boolean'
+    );
   }
 
   private connectWithRetry(): void {

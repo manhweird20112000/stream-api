@@ -1,47 +1,24 @@
 services:
-  kong:
-    image: kong:3.7
-    depends_on:
-      api-gateway:
-        condition: service_healthy
-    environment:
-      KONG_DATABASE: 'off'
-      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
-      KONG_PROXY_ACCESS_LOG: /dev/stdout
-      KONG_ADMIN_ACCESS_LOG: /dev/stdout
-      KONG_PROXY_ERROR_LOG: /dev/stderr
-      KONG_ADMIN_ERROR_LOG: /dev/stderr
-      KONG_ADMIN_LISTEN: 0.0.0.0:8001
-    ports:
-      - '8000:8000'
-      - '8001:8001'
-    volumes:
-      - ./kong/kong.yml:/kong/declarative/kong.yml:ro
-    healthcheck:
-      test: ['CMD', 'kong', 'health']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   api-gateway:
     build:
       context: .
       dockerfile: Dockerfile
       target: runner
-    depends_on:
-      kafka:
-        condition: service_started
     environment:
       APP_NAME: api-gateway
       APP_PORT: 3000
+      API_GATEWAY_INSTANCES: 1
       NODE_ENV: production
       KAFKA_BROKERS: kafka:9092
       KAFKA_CLIENT_ID: api-gateway
       KAFKA_GROUP_ID: api-gateway
       JWT_SECRET: local-secret
       TOKEN_EXPIRATION: 1000d
+      REFRESH_TOKEN_EXPIRATION_DAYS: 30
+      AUTH_SUCCESS_REDIRECT_URL: http://localhost:3000/api/v1/auth/success
+      AUTH_FAILURE_REDIRECT_URL: http://localhost:3000/api/v1/auth/failure
     ports:
-      - '13000:3000'
+      - '3000:3000'
     healthcheck:
       test:
         [
@@ -51,23 +28,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - stream-net
 
-  kafka:
-    image: apache/kafka:3.7.0
-    hostname: kafka
-    ports:
-      - '19094:9094'
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:9094,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:19094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_NUM_PARTITIONS: 16
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+networks:
+  stream-net:
+    external: true

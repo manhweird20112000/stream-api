@@ -42,7 +42,11 @@ describe('KafkaGatewayService', () => {
     expect(client.subscribeToResponseOf).toHaveBeenCalledWith(
       'stream.commands',
     );
-    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('auth.commands');
+    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('auth.register');
+    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('auth.login');
+    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('auth.refresh');
+    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('auth.logout');
+    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('auth.me');
     expect(client.connect).toHaveBeenCalled();
     expect(service.isReady()).toBe(true);
   });
@@ -204,6 +208,18 @@ describe('KafkaGatewayService', () => {
         payload: { title: 'Demo' },
       }),
     ).resolves.toEqual({ streamId: 'stream-1', status: 'created' });
+  });
+
+  it('returns raw downstream replies', async () => {
+    client.send.mockReturnValue(of({ accessToken: 'access-token' }));
+    const service = new KafkaGatewayService(client as never);
+
+    await expect(
+      service.request('auth.login', {
+        email: 'user@example.com',
+        password: 'secret123',
+      }),
+    ).resolves.toEqual({ accessToken: 'access-token' });
   });
 
   it('normalizes downstream error replies', async () => {

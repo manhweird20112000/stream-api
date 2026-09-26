@@ -25,9 +25,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     if (exception instanceof KafkaGatewayDownstreamError) {
-      return response.status(HttpStatus.BAD_GATEWAY).json({
-        status_code: HttpStatus.BAD_GATEWAY,
-        message: 'Downstream service error',
+      const status = exception.statusCode;
+      const message =
+        status === HttpStatus.BAD_GATEWAY
+          ? 'Downstream service error'
+          : exception.message;
+
+      return response.status(status).json({
+        status_code: status,
+        message,
         data: { code: exception.code },
       });
     }

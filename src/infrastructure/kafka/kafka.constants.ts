@@ -7,7 +7,14 @@ export const STREAM_TOPICS = {
 } as const;
 
 export const AUTH_TOPICS = {
-  commands: 'auth.commands',
+  register: 'auth.register',
+  verifyEmail: 'auth.verify_email',
+  login: 'auth.login',
+  refresh: 'auth.refresh',
+  logout: 'auth.logout',
+  me: 'auth.me',
+  updateMe: 'auth.update_me',
+  googleStart: 'auth.google_start',
+  googleCallback: 'auth.google_callback',
   events: 'auth.events',
-  commandReplies: 'auth.commands.reply',
 } as const;

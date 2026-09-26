@@ -11,11 +11,28 @@ export class SecretService extends ConfigService implements IAdapterSecret {
 
   JWT_SECRET = this.required('JWT_SECRET');
   TOKEN_EXPIRATION = this.required('TOKEN_EXPIRATION');
+  REFRESH_TOKEN_EXPIRATION_DAYS = this.readNumber(
+    'REFRESH_TOKEN_EXPIRATION_DAYS',
+    1,
+    3650,
+  );
+  AUTH_SUCCESS_REDIRECT_URL = this.optional(
+    'AUTH_SUCCESS_REDIRECT_URL',
+    'http://localhost:3000/api/v1/auth/success',
+  );
+  AUTH_FAILURE_REDIRECT_URL = this.optional(
+    'AUTH_FAILURE_REDIRECT_URL',
+    'http://localhost:3000/api/v1/auth/failure',
+  );
 
   private required(name: string): string {
     const value = this.get<string>(name);
     if (!value) throw new Error(`${name} is required`);
     return value;
+  }
+
+  private optional(name: string, fallback: string): string {
+    return this.get<string>(name) || fallback;
   }
 
   private readList(name: string): string[] {

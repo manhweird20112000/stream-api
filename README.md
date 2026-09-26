@@ -34,8 +34,7 @@ POST /api/auth/logout
 GET /api/auth/me
 ```
 
-Local direct Docker URL: `http://localhost:13000`.
-Local Kong proxy URL: `http://localhost:8000`.
+Local Docker URL: `http://localhost:3000`.
 
 ## Local Development
 
@@ -72,7 +71,6 @@ can be used to test event-loop blocking behavior.
 ```bash
 docker compose up -d --build
 docker compose ps
-docker compose logs -f kong
 docker compose logs -f api-gateway
 docker compose down
 ```
@@ -82,9 +80,11 @@ Production containers start with `pnpm start:cluster`, which runs
 
 The local stack contains:
 
-- `kong`: DB-less edge proxy for local traffic on `http://localhost:8000`
 - `api-gateway`: NestJS HTTP API Gateway running with PM2 cluster mode (`instances: max`)
-- `kafka`: single-node local broker
+
+Kafka and Kong are deployed from the root stack. This service expects
+`KAFKA_BROKERS=kafka:9092` in Docker, with both stacks sharing the
+`stream-net` Docker network.
 
 ## Kafka Conventions
 
@@ -97,8 +97,8 @@ The local stack contains:
 - `stream.commands.reply`: Nest Kafka request/reply results for synchronous
   HTTP responses
 
-Local Kafka auto-creates topics with 16 partitions so Nest Kafka
-request/reply works with the PM2 cluster. In production, create every
+The root Kafka stack should create topics with enough partitions for Nest Kafka
+request/reply to work with the PM2 cluster. In production, create every
 `*.commands.reply` topic with at least as many partitions as running gateway
 processes.
 

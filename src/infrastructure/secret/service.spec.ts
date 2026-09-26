@@ -9,6 +9,9 @@ describe('SecretService', () => {
     'KAFKA_GROUP_ID',
     'JWT_SECRET',
     'TOKEN_EXPIRATION',
+    'REFRESH_TOKEN_EXPIRATION_DAYS',
+    'AUTH_SUCCESS_REDIRECT_URL',
+    'AUTH_FAILURE_REDIRECT_URL',
   ] as const;
   const original = Object.fromEntries(
     names.map((name) => [name, process.env[name]]),
@@ -23,6 +26,9 @@ describe('SecretService', () => {
       KAFKA_GROUP_ID: 'api-gateway',
       JWT_SECRET: 'test-secret',
       TOKEN_EXPIRATION: '1d',
+      REFRESH_TOKEN_EXPIRATION_DAYS: '30',
+      AUTH_SUCCESS_REDIRECT_URL: 'http://localhost:3000/api/v1/auth/success',
+      AUTH_FAILURE_REDIRECT_URL: 'http://localhost:3000/api/v1/auth/failure',
     });
   });
 
@@ -42,6 +48,10 @@ describe('SecretService', () => {
       'localhost:9092',
       'kafka:9092',
     ]);
+  });
+
+  it('parses refresh token expiration days as a number', () => {
+    expect(new SecretService().REFRESH_TOKEN_EXPIRATION_DAYS).toBe(30);
   });
 
   it('rejects a missing JWT secret', () => {

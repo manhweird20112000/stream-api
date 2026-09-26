@@ -8,4 +8,7 @@ export abstract class IAdapterSecret {
 
   abstract JWT_SECRET: string;
   abstract TOKEN_EXPIRATION: string;
+  abstract REFRESH_TOKEN_EXPIRATION_DAYS: number;
+  abstract AUTH_SUCCESS_REDIRECT_URL: string;
+  abstract AUTH_FAILURE_REDIRECT_URL: string;
 }
