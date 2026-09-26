@@ -33,7 +33,7 @@ describe('KafkaGatewayService', () => {
     jest.useRealTimers();
   });
 
-  it('subscribes to stream command replies and marks itself ready after connect', async () => {
+  it('subscribes to command replies and marks itself ready after connect', async () => {
     const service = new KafkaGatewayService(client as never);
 
     await service.onModuleInit();
@@ -42,6 +42,7 @@ describe('KafkaGatewayService', () => {
     expect(client.subscribeToResponseOf).toHaveBeenCalledWith(
       'stream.commands',
     );
+    expect(client.subscribeToResponseOf).toHaveBeenCalledWith('auth.commands');
     expect(client.connect).toHaveBeenCalled();
     expect(service.isReady()).toBe(true);
   });

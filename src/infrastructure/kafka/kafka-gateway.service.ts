@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { firstValueFrom, Subscription, TimeoutError, timeout } from 'rxjs';
-import { KAFKA_CLIENT, STREAM_TOPICS } from './kafka.constants';
+import { AUTH_TOPICS, KAFKA_CLIENT, STREAM_TOPICS } from './kafka.constants';
 import {
   KafkaGatewayDownstreamError,
   KafkaGatewayTimeoutError,
@@ -43,6 +43,7 @@ export class KafkaGatewayService implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     this.destroyed = false;
     this.client.subscribeToResponseOf(STREAM_TOPICS.commands);
+    this.client.subscribeToResponseOf(AUTH_TOPICS.commands);
     this.statusSubscription = this.client.status.subscribe((status) => {
       if (status !== 'connected') {
         this.ready = false;

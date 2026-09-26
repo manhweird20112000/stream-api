@@ -24,7 +24,18 @@ GET /api/health/ready
 GET /api/docs
 ```
 
-Local URL: `http://localhost:3000`.
+Auth gateway endpoints:
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/refresh
+POST /api/auth/logout
+GET /api/auth/me
+```
+
+Local direct Docker URL: `http://localhost:13000`.
+Local Kong proxy URL: `http://localhost:8000`.
 
 ## Local Development
 
@@ -37,17 +48,12 @@ pnpm start:dev
 Required environment:
 
 ```env
-APP_NAME=auth-service
+APP_NAME=api-gateway
 APP_PORT=3000
 NODE_ENV=development
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_USER=auth_service
-DATABASE_PASSWORD=auth_service_password
-DATABASE_NAME=auth_service
-KAFKA_BROKERS=localhost:9094
-KAFKA_CLIENT_ID=auth-service
-KAFKA_GROUP_ID=auth-service
+KAFKA_BROKERS=localhost:19094
+KAFKA_CLIENT_ID=api-gateway
+KAFKA_GROUP_ID=api-gateway
 JWT_SECRET=change-this-secret-before-deployment
 TOKEN_EXPIRATION=1000d
 ```
@@ -66,22 +72,35 @@ can be used to test event-loop blocking behavior.
 ```bash
 docker compose up -d --build
 docker compose ps
-docker compose logs -f auth-service
+docker compose logs -f kong
+docker compose logs -f api-gateway
 docker compose down
 ```
 
+Production containers start with `pnpm start:cluster`, which runs
+`pm2-runtime ecosystem.config.cjs` in cluster mode with `instances: max`.
+
 The local stack contains:
 
-- `auth-service`: NestJS HTTP service
-- `postgres`: local PostgreSQL database
+- `kong`: DB-less edge proxy for local traffic on `http://localhost:8000`
+- `api-gateway`: NestJS HTTP API Gateway running with PM2 cluster mode (`instances: max`)
 - `kafka`: single-node local broker
 
 ## Kafka Conventions
 
+- `auth.commands`: commands such as `auth.login`
+- `auth.events`: facts published by the auth service
+- `auth.commands.reply`: Nest Kafka request/reply results for synchronous
+  auth HTTP responses
 - `stream.commands`: commands such as `stream.create`
 - `stream.events`: facts published by business services
 - `stream.commands.reply`: Nest Kafka request/reply results for synchronous
   HTTP responses
+
+Local Kafka auto-creates topics with 16 partitions so Nest Kafka
+request/reply works with the PM2 cluster. In production, create every
+`*.commands.reply` topic with at least as many partitions as running gateway
+processes.
 
 Example command envelope:
 

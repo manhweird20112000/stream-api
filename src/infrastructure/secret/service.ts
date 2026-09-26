@@ -5,12 +5,6 @@ export class SecretService extends ConfigService implements IAdapterSecret {
   APP_NAME = this.required('APP_NAME');
   APP_PORT = this.readPort();
 
-  DATABASE_HOST = this.required('DATABASE_HOST');
-  DATABASE_PORT = this.readNumber('DATABASE_PORT', 1, 65535);
-  DATABASE_USER = this.required('DATABASE_USER');
-  DATABASE_PASSWORD = this.required('DATABASE_PASSWORD');
-  DATABASE_NAME = this.required('DATABASE_NAME');
-
   KAFKA_BROKERS = this.readList('KAFKA_BROKERS');
   KAFKA_CLIENT_ID = this.required('KAFKA_CLIENT_ID');
   KAFKA_GROUP_ID = this.required('KAFKA_GROUP_ID');
