@@ -9,6 +9,7 @@ import { IAdapterSecret } from '@/infrastructure/secret/adapter';
 import { useContainer } from 'class-validator';
 import compression from 'compression';
 import { ValidationPipe } from '@/shared/presentation/validation/validation.pipe';
+import { createKafkaOptions } from '@/infrastructure/kafka/kafka.options';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -43,9 +44,15 @@ async function bootstrap() {
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, swaggerDocument);
 
-  const { APP_PORT } = app.get(IAdapterSecret);
+  const secrets = app.get(IAdapterSecret);
 
-  await app.listen(APP_PORT);
+  app.connectMicroservice(createKafkaOptions(secrets), {
+    inheritAppConfig: true,
+  });
+
+  await app.startAllMicroservices();
+
+  await app.listen(secrets.APP_PORT);
 }
 
 bootstrap();

@@ -1,15 +1,23 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { KafkaModule } from '@/infrastructure/kafka/kafka.module';
 import { SecretModule } from '@/infrastructure/secret';
 import { IAdapterSecret } from '@/infrastructure/secret/adapter';
 import { JwtAuthGuard } from '@/shared/presentation/guards/jwt-auth.guard';
+import { CreateStreamKeyUseCase } from './application/use-cases/create-stream-key.use-case';
 import { CreateStreamUseCase } from './application/use-cases/create-stream.use-case';
+import {
+  DeleteStreamUseCase,
+  GetStreamUseCase,
+  ListStreamsUseCase,
+  UpdateStreamUseCase,
+} from './application/use-cases/stream-crud.use-cases';
+import { VerifyStreamKeyUseCase } from './application/use-cases/verify-stream-key.use-case';
+import { StreamsPersistenceModule } from './infrastructure/persistence/streams-persistence.module';
 import { StreamsController } from './presentation/http/streams.controller';
 
 @Module({
   imports: [
-    KafkaModule,
+    StreamsPersistenceModule,
     JwtModule.registerAsync({
       imports: [SecretModule],
       inject: [IAdapterSecret],
@@ -20,6 +28,15 @@ import { StreamsController } from './presentation/http/streams.controller';
     }),
   ],
   controllers: [StreamsController],
-  providers: [CreateStreamUseCase, JwtAuthGuard],
+  providers: [
+    CreateStreamUseCase,
+    CreateStreamKeyUseCase,
+    VerifyStreamKeyUseCase,
+    ListStreamsUseCase,
+    GetStreamUseCase,
+    UpdateStreamUseCase,
+    DeleteStreamUseCase,
+    JwtAuthGuard,
+  ],
 })
 export class StreamsModule {}

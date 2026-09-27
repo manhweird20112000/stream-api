@@ -6,7 +6,15 @@ import {
   KafkaGatewayDownstreamError,
   KafkaGatewayTimeoutError,
 } from '../src/infrastructure/kafka/kafka.errors';
+import { CreateStreamKeyUseCase } from '../src/modules/streams/application/use-cases/create-stream-key.use-case';
 import { CreateStreamUseCase } from '../src/modules/streams/application/use-cases/create-stream.use-case';
+import { VerifyStreamKeyUseCase } from '../src/modules/streams/application/use-cases/verify-stream-key.use-case';
+import {
+  DeleteStreamUseCase,
+  GetStreamUseCase,
+  ListStreamsUseCase,
+  UpdateStreamUseCase,
+} from '../src/modules/streams/application/use-cases/stream-crud.use-cases';
 import { StreamsController } from '../src/modules/streams/presentation/http/streams.controller';
 import { HttpExceptionFilter } from '../src/shared/presentation/filters/http-exception.filter';
 import { JwtAuthGuard } from '../src/shared/presentation/guards/jwt-auth.guard';
@@ -16,6 +24,12 @@ describe('streams gateway (e2e)', () => {
   let app: INestApplication;
   let jwt: JwtService;
   const createStream = { execute: jest.fn() };
+  const createStreamKey = { execute: jest.fn() };
+  const verifyStreamKey = { execute: jest.fn() };
+  const listStreams = { execute: jest.fn() };
+  const getStream = { execute: jest.fn() };
+  const updateStream = { execute: jest.fn() };
+  const deleteStream = { execute: jest.fn() };
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -24,6 +38,12 @@ describe('streams gateway (e2e)', () => {
       providers: [
         JwtAuthGuard,
         { provide: CreateStreamUseCase, useValue: createStream },
+        { provide: CreateStreamKeyUseCase, useValue: createStreamKey },
+        { provide: VerifyStreamKeyUseCase, useValue: verifyStreamKey },
+        { provide: ListStreamsUseCase, useValue: listStreams },
+        { provide: GetStreamUseCase, useValue: getStream },
+        { provide: UpdateStreamUseCase, useValue: updateStream },
+        { provide: DeleteStreamUseCase, useValue: deleteStream },
       ],
     }).compile();
 
@@ -69,13 +89,189 @@ describe('streams gateway (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/streams')
       .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Launch stream', description: 'Demo' })
+      .send({
+        title: 'Launch stream',
+        description: 'Demo',
+        thumbnailUrl: 'https://cdn.example.com/streams/launch.jpg',
+        visibility: 'PUBLIC',
+      })
       .expect(201);
 
     expect(createStream.execute).toHaveBeenCalledWith({
       userId: 'user-1',
       title: 'Launch stream',
       description: 'Demo',
+      thumbnailUrl: 'https://cdn.example.com/streams/launch.jpg',
+      visibility: 'PUBLIC',
+    });
+  });
+
+  it('generates a stream key for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    createStreamKey.execute.mockResolvedValue({ success: true });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/streams/keys')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(201);
+
+    expect(response.body).toEqual({ success: true });
+    expect(response.body).not.toHaveProperty('key');
+    expect(response.body).not.toHaveProperty('keyPrefix');
+    expect(createStreamKey.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+    });
+  });
+
+  it('refreshes a stream key for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    createStreamKey.execute.mockResolvedValue({ success: true });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/streams/keys/refresh')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(201);
+
+    expect(response.body).toEqual({ success: true });
+    expect(response.body).not.toHaveProperty('key');
+    expect(response.body).not.toHaveProperty('keyPrefix');
+    expect(createStreamKey.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      refresh: true,
+    });
+  });
+
+  it('verifies a stream key without a bearer token', async () => {
+    verifyStreamKey.execute.mockResolvedValue({
+      valid: true,
+      ownerUserId: 'user-1',
+      streamKeyId: 'key-1',
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/streams/keys/verify')
+      .send({ streamKey: 'sk_valid-stream-key' })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      valid: true,
+      ownerUserId: 'user-1',
+      streamKeyId: 'key-1',
+    });
+    expect(verifyStreamKey.execute).toHaveBeenCalledWith({
+      streamKey: 'sk_valid-stream-key',
+    });
+  });
+
+  it('lists streams for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    listStreams.execute.mockResolvedValue([
+      {
+        id: 'stream-1',
+        title: 'Launch stream',
+        description: 'Demo',
+        thumbnailUrl: null,
+        visibility: 'PRIVATE',
+        status: 'CREATED',
+        createdAt: new Date('2026-09-26T00:00:00.000Z'),
+        updatedAt: new Date('2026-09-26T00:00:00.000Z'),
+      },
+    ]);
+
+    const response = await request(app.getHttpServer())
+      .get('/api/streams')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body).toEqual([
+      {
+        id: 'stream-1',
+        title: 'Launch stream',
+        description: 'Demo',
+        thumbnailUrl: null,
+        visibility: 'PRIVATE',
+        status: 'CREATED',
+        createdAt: '2026-09-26T00:00:00.000Z',
+        updatedAt: '2026-09-26T00:00:00.000Z',
+      },
+    ]);
+    expect(listStreams.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+    });
+  });
+
+  it('gets a stream for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    getStream.execute.mockResolvedValue({
+      id: 'stream-1',
+      title: 'Launch stream',
+      description: 'Demo',
+      thumbnailUrl: null,
+      visibility: 'PRIVATE',
+      status: 'CREATED',
+      createdAt: new Date('2026-09-26T00:00:00.000Z'),
+      updatedAt: new Date('2026-09-26T00:00:00.000Z'),
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/streams/stream-1')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.id).toBe('stream-1');
+    expect(getStream.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      streamId: 'stream-1',
+    });
+  });
+
+  it('updates a stream for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    updateStream.execute.mockResolvedValue({
+      id: 'stream-1',
+      title: 'Updated stream',
+      description: null,
+      thumbnailUrl: 'https://cdn.example.com/streams/updated.jpg',
+      visibility: 'PUBLIC',
+      status: 'CREATED',
+      createdAt: new Date('2026-09-26T00:00:00.000Z'),
+      updatedAt: new Date('2026-09-26T00:00:00.000Z'),
+    });
+
+    const response = await request(app.getHttpServer())
+      .patch('/api/streams/stream-1')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Updated stream',
+        description: null,
+        thumbnailUrl: 'https://cdn.example.com/streams/updated.jpg',
+        visibility: 'PUBLIC',
+      })
+      .expect(200);
+
+    expect(response.body.title).toBe('Updated stream');
+    expect(updateStream.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      streamId: 'stream-1',
+      title: 'Updated stream',
+      description: null,
+      thumbnailUrl: 'https://cdn.example.com/streams/updated.jpg',
+      visibility: 'PUBLIC',
+    });
+  });
+
+  it('deletes a stream for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    deleteStream.execute.mockResolvedValue(undefined);
+
+    await request(app.getHttpServer())
+      .delete('/api/streams/stream-1')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(204);
+
+    expect(deleteStream.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      streamId: 'stream-1',
     });
   });
 

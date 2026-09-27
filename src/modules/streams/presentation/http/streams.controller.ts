@@ -1,8 +1,32 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '@/shared/presentation/guards/jwt-auth.guard';
+import { CreateStreamKeyUseCase } from '../../application/use-cases/create-stream-key.use-case';
 import { CreateStreamUseCase } from '../../application/use-cases/create-stream.use-case';
+import {
+  DeleteStreamUseCase,
+  GetStreamUseCase,
+  ListStreamsUseCase,
+  UpdateStreamUseCase,
+} from '../../application/use-cases/stream-crud.use-cases';
+import { VerifyStreamKeyUseCase } from '../../application/use-cases/verify-stream-key.use-case';
 import { CreateStreamRequest } from './dto/create-stream.request';
+import { StreamKeyResponse } from './dto/stream-key.response';
+import { StreamResponse } from './dto/stream.response';
+import { UpdateStreamRequest } from './dto/update-stream.request';
+import { VerifyStreamKeyRequest } from './dto/verify-stream-key.request';
+import { VerifyStreamKeyResponse } from './dto/verify-stream-key.response';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -12,18 +36,121 @@ interface AuthenticatedRequest extends Request {
 
 @Controller('streams')
 export class StreamsController {
-  constructor(private readonly createStream: CreateStreamUseCase) {}
+  constructor(
+    private readonly createStream: CreateStreamUseCase,
+    private readonly createStreamKey: CreateStreamKeyUseCase,
+    private readonly verifyStreamKey: VerifyStreamKeyUseCase,
+    private readonly listStreams: ListStreamsUseCase,
+    private readonly getStream: GetStreamUseCase,
+    private readonly updateStream: UpdateStreamUseCase,
+    private readonly deleteStream: DeleteStreamUseCase,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(
+  async create(
     @Body() body: CreateStreamRequest,
     @Req() request: AuthenticatedRequest,
-  ) {
-    return this.createStream.execute({
+  ): Promise<StreamResponse> {
+    const stream = await this.createStream.execute({
       userId: request.user.sub,
       title: body.title,
       description: body.description,
+      thumbnailUrl: body.thumbnailUrl,
+      visibility: body.visibility,
+    });
+
+    return StreamResponse.fromDomain(stream);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async list(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<StreamResponse[]> {
+    const streams = await this.listStreams.execute({
+      ownerUserId: request.user.sub,
+    });
+
+    return streams.map(StreamResponse.fromDomain);
+  }
+
+  @Post('keys')
+  @UseGuards(JwtAuthGuard)
+  async generateKey(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<StreamKeyResponse> {
+    await this.createStreamKey.execute({
+      ownerUserId: request.user.sub,
+    });
+
+    return StreamKeyResponse.ok();
+  }
+
+  @Post('keys/refresh')
+  @UseGuards(JwtAuthGuard)
+  async refreshKey(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<StreamKeyResponse> {
+    await this.createStreamKey.execute({
+      ownerUserId: request.user.sub,
+      refresh: true,
+    });
+
+    return StreamKeyResponse.ok();
+  }
+
+  @Post('keys/verify')
+  @HttpCode(200)
+  async verifyKey(
+    @Body() body: VerifyStreamKeyRequest,
+  ): Promise<VerifyStreamKeyResponse> {
+    return this.verifyStreamKey.execute({ streamKey: body.streamKey });
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async get(
+    @Param('id') streamId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<StreamResponse> {
+    const stream = await this.getStream.execute({
+      ownerUserId: request.user.sub,
+      streamId,
+    });
+
+    return StreamResponse.fromDomain(stream);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  async update(
+    @Param('id') streamId: string,
+    @Body() body: UpdateStreamRequest,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<StreamResponse> {
+    const stream = await this.updateStream.execute({
+      ownerUserId: request.user.sub,
+      streamId,
+      title: body.title,
+      description: body.description,
+      thumbnailUrl: body.thumbnailUrl,
+      visibility: body.visibility,
+    });
+
+    return StreamResponse.fromDomain(stream);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  async delete(
+    @Param('id') streamId: string,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<void> {
+    await this.deleteStream.execute({
+      ownerUserId: request.user.sub,
+      streamId,
     });
   }
 }

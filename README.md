@@ -41,10 +41,11 @@ APP_NAME=stream-service
 APP_PORT=3000
 NODE_ENV=development
 DATABASE_HOST=localhost
-DATABASE_PORT=5432
+DATABASE_PORT=5434
 DATABASE_USER=stream_service
 DATABASE_PASSWORD=stream_service_password
 DATABASE_NAME=stream_service
+DATABASE_ENABLED=true
 KAFKA_BROKERS=localhost:19094
 KAFKA_CLIENT_ID=stream-service
 KAFKA_GROUP_ID=stream-service
@@ -102,17 +103,54 @@ Example command envelope:
 
 ```http
 POST /api/streams
+GET /api/streams
+GET /api/streams/:id
+PATCH /api/streams/:id
+DELETE /api/streams/:id
 Authorization: Bearer <jwt>
 Content-Type: application/json
 
 {
   "title": "Launch stream",
-  "description": "Demo"
+  "description": "Demo",
+  "thumbnailUrl": "https://cdn.example.com/streams/launch.jpg",
+  "visibility": "PUBLIC"
 }
 ```
 
 The service validates the request, verifies the JWT, and sends a
 `stream.create` command to Kafka.
+
+Stream key endpoints:
+
+```http
+POST /api/streams/keys
+POST /api/streams/keys/refresh
+POST /api/streams/keys/verify
+```
+
+The first endpoint creates the initial key and returns `409` when an active key
+already exists. The refresh endpoint revokes the active key and creates a new
+key. Both endpoints return only `{ "success": true }`; the service stores only
+the key hash and never returns the plain stream key.
+
+The verify endpoint accepts a plain key, hashes it with SHA-256, and checks for
+an active stored hash:
+
+```json
+{
+  "streamKey": "sk_example_plain_stream_key"
+}
+```
+
+It returns `{ "valid": false }` when no active key matches. For a valid key it
+also returns the `ownerUserId` and `streamKeyId` needed by the ingest layer.
+
+Postman collection:
+
+```text
+docs/postman/stream-service.postman_collection.json
+```
 
 ## Project Structure
 

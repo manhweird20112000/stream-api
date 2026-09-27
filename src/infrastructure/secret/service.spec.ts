@@ -4,6 +4,7 @@ describe('SecretService', () => {
   const names = [
     'APP_NAME',
     'APP_PORT',
+    'DATABASE_ENABLED',
     'DATABASE_HOST',
     'DATABASE_PORT',
     'DATABASE_USER',
@@ -23,6 +24,7 @@ describe('SecretService', () => {
     Object.assign(process.env, {
       APP_NAME: 'auth-service',
       APP_PORT: '3000',
+      DATABASE_ENABLED: 'true',
       DATABASE_HOST: 'localhost',
       DATABASE_PORT: '5432',
       DATABASE_USER: 'auth_service',
@@ -47,7 +49,7 @@ describe('SecretService', () => {
     expect(new SecretService().APP_PORT).toBe(3000);
   });
 
-  it('parses the database port as a number', () => {
+  it('parses the database port as a number when database is enabled', () => {
     expect(new SecretService().DATABASE_PORT).toBe(5432);
   });
 
@@ -56,6 +58,17 @@ describe('SecretService', () => {
       'localhost:9092',
       'kafka:9092',
     ]);
+  });
+
+  it('does not require database settings when database is disabled', () => {
+    process.env.DATABASE_ENABLED = 'false';
+    delete process.env.DATABASE_HOST;
+    delete process.env.DATABASE_PORT;
+    delete process.env.DATABASE_USER;
+    delete process.env.DATABASE_PASSWORD;
+    delete process.env.DATABASE_NAME;
+
+    expect(new SecretService().DATABASE_PORT).toBe(0);
   });
 
   it('rejects a missing JWT secret', () => {

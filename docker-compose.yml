@@ -11,6 +11,7 @@ services:
       APP_NAME: stream-service
       APP_PORT: 3000
       NODE_ENV: production
+      DATABASE_ENABLED: 'true'
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_USER: stream_service

@@ -1,0 +1,453 @@
+{
+  "info": {
+    "_postman_id": "7e457b2a-4a83-4fb8-a8e5-8c6b7f1f31e4",
+    "name": "Stream Service",
+    "description": "Stream-service collection. Flow: Login through auth-service -> use accessToken for stream APIs -> Generate or refresh stream key.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health - Live",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": {
+          "raw": "{{streamApiUrl}}/health/live",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "health",
+            "live"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Health - Ready",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": {
+          "raw": "{{streamApiUrl}}/health/ready",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "health",
+            "ready"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Login with email/password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('login succeeds', function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "const body = pm.response.json();",
+              "const data = body.data || body;",
+              "if (data && data.accessToken) {",
+              "  pm.environment.set('accessToken', data.accessToken);",
+              "  pm.environment.set('userId', data.user.id);",
+              "  pm.environment.set('userEmail', data.user.email);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": {
+          "raw": "{{apiV1Url}}/auth/login",
+          "host": [
+            "{{apiV1Url}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Logs in using auth-service and stores `accessToken`, `userId`, and `userEmail` in the active Postman environment."
+      }
+    },
+    {
+      "name": "Create Stream",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.environment.set('streamId', data.id);",
+              "  pm.collectionVariables.set('streamId', data.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Launch stream\",\n  \"description\": \"Demo stream\",\n  \"thumbnailUrl\": \"https://cdn.example.com/streams/launch.jpg\",\n  \"visibility\": \"PUBLIC\"\n}"
+        },
+        "url": {
+          "raw": "{{streamApiUrl}}/streams",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams"
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Streams",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{streamApiUrl}}/streams",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Stream",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/{{streamId}}",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "{{streamId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Stream",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Updated stream\",\n  \"description\": null,\n  \"thumbnailUrl\": \"https://cdn.example.com/streams/updated.jpg\",\n  \"visibility\": \"PUBLIC\"\n}"
+        },
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/{{streamId}}",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "{{streamId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Stream",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/{{streamId}}",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "{{streamId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Generate Stream Key",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stream key generation returns only success', function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.expect(data.success).to.eql(true);",
+              "  pm.expect(data.id).to.eql(undefined);",
+              "  pm.expect(data.key).to.eql(undefined);",
+              "  pm.expect(data.keyPrefix).to.eql(undefined);",
+              "  pm.expect(data.streamKeyId).to.eql(undefined);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/keys",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "keys"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Refresh Stream Key",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stream key refresh returns only success', function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.expect(data.success).to.eql(true);",
+              "  pm.expect(data.id).to.eql(undefined);",
+              "  pm.expect(data.key).to.eql(undefined);",
+              "  pm.expect(data.keyPrefix).to.eql(undefined);",
+              "  pm.expect(data.streamKeyId).to.eql(undefined);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/keys/refresh",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "keys",
+            "refresh"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Verify Stream Key",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stream key verification returns a boolean result', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.expect(data.valid).to.be.a('boolean');",
+              "  pm.expect(data.key).to.eql(undefined);",
+              "  pm.expect(data.keyHash).to.eql(undefined);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"streamKey\": \"{{streamKeyToVerify}}\"\n}"
+        },
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/keys/verify",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "keys",
+            "verify"
+          ]
+        },
+        "description": "Verifies a plain stream key by hashing it server-side and matching only active keys. No bearer token is required because the stream key itself is the ingest credential."
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "apiUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "apiV1Url",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "streamApiUrl",
+      "value": "http://localhost:13002/api"
+    },
+    {
+      "key": "email",
+      "value": "owner@example.com"
+    },
+    {
+      "key": "password",
+      "value": "secret123"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "userEmail",
+      "value": ""
+    },
+    {
+      "key": "streamId",
+      "value": ""
+    },
+    {
+      "key": "streamKeyToVerify",
+      "value": "sk_example_plain_stream_key"
+    }
+  ]
+}
