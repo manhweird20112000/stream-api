@@ -11,8 +11,11 @@ import { CreateStreamUseCase } from '../src/modules/streams/application/use-case
 import { VerifyStreamKeyUseCase } from '../src/modules/streams/application/use-cases/verify-stream-key.use-case';
 import {
   DeleteStreamUseCase,
+  EndStreamUseCase,
   GetStreamUseCase,
+  ListPublicLiveStreamsUseCase,
   ListStreamsUseCase,
+  PublishStreamUseCase,
   UpdateStreamUseCase,
 } from '../src/modules/streams/application/use-cases/stream-crud.use-cases';
 import { StreamsController } from '../src/modules/streams/presentation/http/streams.controller';
@@ -27,8 +30,11 @@ describe('streams gateway (e2e)', () => {
   const createStreamKey = { execute: jest.fn() };
   const verifyStreamKey = { execute: jest.fn() };
   const listStreams = { execute: jest.fn() };
+  const listPublicLiveStreams = { execute: jest.fn() };
   const getStream = { execute: jest.fn() };
   const updateStream = { execute: jest.fn() };
+  const publishStream = { execute: jest.fn() };
+  const endStream = { execute: jest.fn() };
   const deleteStream = { execute: jest.fn() };
 
   beforeAll(async () => {
@@ -41,8 +47,11 @@ describe('streams gateway (e2e)', () => {
         { provide: CreateStreamKeyUseCase, useValue: createStreamKey },
         { provide: VerifyStreamKeyUseCase, useValue: verifyStreamKey },
         { provide: ListStreamsUseCase, useValue: listStreams },
+        { provide: ListPublicLiveStreamsUseCase, useValue: listPublicLiveStreams },
         { provide: GetStreamUseCase, useValue: getStream },
         { provide: UpdateStreamUseCase, useValue: updateStream },
+        { provide: PublishStreamUseCase, useValue: publishStream },
+        { provide: EndStreamUseCase, useValue: endStream },
         { provide: DeleteStreamUseCase, useValue: deleteStream },
       ],
     }).compile();
@@ -183,20 +192,72 @@ describe('streams gateway (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(response.body).toEqual([
+    expect(response.body).toEqual({
+      items: [
+        {
+          id: 'stream-1',
+          title: 'Launch stream',
+          description: 'Demo',
+          thumbnailUrl: null,
+          visibility: 'PRIVATE',
+          status: 'CREATED',
+          createdAt: '2026-09-26T00:00:00.000Z',
+          updatedAt: '2026-09-26T00:00:00.000Z',
+        },
+      ],
+      meta: {
+        limit: 20,
+        hasNextPage: false,
+        nextCursor: null,
+      },
+    });
+    expect(listStreams.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      limit: 21,
+      cursor: undefined,
+    });
+  });
+
+  it('lists public live streams without a bearer token', async () => {
+    listPublicLiveStreams.execute.mockResolvedValue([
       {
         id: 'stream-1',
         title: 'Launch stream',
         description: 'Demo',
         thumbnailUrl: null,
-        visibility: 'PRIVATE',
-        status: 'CREATED',
-        createdAt: '2026-09-26T00:00:00.000Z',
-        updatedAt: '2026-09-26T00:00:00.000Z',
+        visibility: 'PUBLIC',
+        status: 'LIVE',
+        createdAt: new Date('2026-09-26T00:00:00.000Z'),
+        updatedAt: new Date('2026-09-26T00:00:00.000Z'),
       },
     ]);
-    expect(listStreams.execute).toHaveBeenCalledWith({
-      ownerUserId: 'user-1',
+
+    const response = await request(app.getHttpServer())
+      .get('/api/streams/live')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      items: [
+        {
+          id: 'stream-1',
+          title: 'Launch stream',
+          description: 'Demo',
+          thumbnailUrl: null,
+          visibility: 'PUBLIC',
+          status: 'LIVE',
+          createdAt: '2026-09-26T00:00:00.000Z',
+          updatedAt: '2026-09-26T00:00:00.000Z',
+        },
+      ],
+      meta: {
+        limit: 20,
+        hasNextPage: false,
+        nextCursor: null,
+      },
+    });
+    expect(listPublicLiveStreams.execute).toHaveBeenCalledWith({
+      limit: 21,
+      cursor: undefined,
     });
   });
 
@@ -257,6 +318,58 @@ describe('streams gateway (e2e)', () => {
       description: null,
       thumbnailUrl: 'https://cdn.example.com/streams/updated.jpg',
       visibility: 'PUBLIC',
+    });
+  });
+
+  it('publishes a stream for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    publishStream.execute.mockResolvedValue({
+      id: 'stream-1',
+      title: 'Launch stream',
+      description: 'Demo',
+      thumbnailUrl: null,
+      visibility: 'PRIVATE',
+      status: 'LIVE',
+      createdAt: new Date('2026-09-26T00:00:00.000Z'),
+      updatedAt: new Date('2026-09-26T00:00:00.000Z'),
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/streams/stream-1/publish')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ publisherIp: '127.0.0.1' })
+      .expect(200);
+
+    expect(response.body.status).toBe('LIVE');
+    expect(publishStream.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      streamId: 'stream-1',
+      publisherIp: '127.0.0.1',
+    });
+  });
+
+  it('ends a stream for the verified owner identity', async () => {
+    const token = await jwt.signAsync({ sub: 'user-1' });
+    endStream.execute.mockResolvedValue({
+      id: 'stream-1',
+      title: 'Launch stream',
+      description: 'Demo',
+      thumbnailUrl: null,
+      visibility: 'PRIVATE',
+      status: 'ENDED',
+      createdAt: new Date('2026-09-26T00:00:00.000Z'),
+      updatedAt: new Date('2026-09-26T00:00:00.000Z'),
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/streams/stream-1/end')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.status).toBe('ENDED');
+    expect(endStream.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      streamId: 'stream-1',
     });
   });
 

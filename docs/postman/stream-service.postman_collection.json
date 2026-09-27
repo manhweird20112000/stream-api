@@ -163,6 +163,30 @@
     },
     {
       "name": "List Streams",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stream list returns cursor pagination shape', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.expect(data.items).to.be.an('array');",
+              "  pm.expect(data.meta).to.be.an('object');",
+              "  pm.expect(data.meta).to.have.property('nextCursor');",
+              "  if (data.meta.nextCursor) {",
+              "    pm.environment.set('streamListCursor', data.meta.nextCursor);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "GET",
         "header": [
@@ -172,14 +196,88 @@
           }
         ],
         "url": {
-          "raw": "{{streamApiUrl}}/streams",
+          "raw": "{{streamApiUrl}}/streams?limit={{streamListLimit}}&cursor={{streamListCursor}}",
           "host": [
             "{{streamApiUrl}}"
           ],
           "path": [
             "streams"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "{{streamListLimit}}"
+            },
+            {
+              "key": "cursor",
+              "value": "{{streamListCursor}}"
+            }
           ]
         }
+      }
+    },
+    {
+      "name": "List Public Live Streams",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('public live stream list returns cursor pagination shape', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.expect(data.items).to.be.an('array');",
+              "  pm.expect(data.meta).to.be.an('object');",
+              "  pm.expect(data.meta).to.have.property('nextCursor');",
+              "  data.items.forEach(function (item) {",
+              "    pm.expect(item.status).to.eql('LIVE');",
+              "    pm.expect(item.visibility).to.eql('PUBLIC');",
+              "  });",
+              "  if (data.meta.nextCursor) {",
+              "    pm.environment.set('publicLiveStreamCursor', data.meta.nextCursor);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/live?limit={{publicLiveStreamLimit}}&cursor={{publicLiveStreamCursor}}",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "live"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "{{publicLiveStreamLimit}}"
+            },
+            {
+              "key": "cursor",
+              "value": "{{publicLiveStreamCursor}}"
+            }
+          ]
+        },
+        "description": "Public endpoint for viewers. Returns only streams with status LIVE and visibility PUBLIC."
       }
     },
     {
@@ -232,6 +330,102 @@
             "{{streamId}}"
           ]
         }
+      }
+    },
+    {
+      "name": "Publish Stream",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stream is live after publish', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.expect(data.status).to.eql('LIVE');",
+              "  pm.expect(data.key).to.eql(undefined);",
+              "  pm.expect(data.keyHash).to.eql(undefined);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"publisherIp\": \"127.0.0.1\"\n}"
+        },
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/{{streamId}}/publish",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "{{streamId}}",
+            "publish"
+          ]
+        },
+        "description": "Publishes a draft stream. Only one stream can be LIVE per owner. If no active key exists, the service creates a new key internally and stores only its hash."
+      }
+    },
+    {
+      "name": "End Stream",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('stream is ended', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "  const body = pm.response.json();",
+              "  const data = body.data || body;",
+              "  pm.expect(data.status).to.eql('ENDED');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{streamApiUrl}}/streams/{{streamId}}/end",
+          "host": [
+            "{{streamApiUrl}}"
+          ],
+          "path": [
+            "streams",
+            "{{streamId}}",
+            "end"
+          ]
+        },
+        "description": "Ends the stream, disconnects the active stream session when present, and records a STREAM_ENDED event."
       }
     },
     {
@@ -443,6 +637,22 @@
     },
     {
       "key": "streamId",
+      "value": ""
+    },
+    {
+      "key": "streamListLimit",
+      "value": "20"
+    },
+    {
+      "key": "streamListCursor",
+      "value": ""
+    },
+    {
+      "key": "publicLiveStreamLimit",
+      "value": "20"
+    },
+    {
+      "key": "publicLiveStreamCursor",
       "value": ""
     },
     {

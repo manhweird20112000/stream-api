@@ -28,6 +28,50 @@ export class InMemoryStreamRepository implements StreamRepository {
     return [...this.streams.values()]
       .filter((stream) => stream.ownerUserId === ownerUserId)
       .filter((stream) => !options.status || stream.status === options.status)
+      .sort((left, right) => {
+        const createdAtDiff =
+          right.createdAt.getTime() - left.createdAt.getTime();
+
+        return createdAtDiff || right.id.localeCompare(left.id);
+      })
+      .filter((stream) => {
+        if (!options.cursor) {
+          return true;
+        }
+
+        return (
+          stream.createdAt < options.cursor.createdAt ||
+          (stream.createdAt.getTime() === options.cursor.createdAt.getTime() &&
+            stream.id < options.cursor.id)
+        );
+      })
+      .slice(offset, offset + limit);
+  }
+
+  async findPublicLive(options: FindStreamsOptions = {}): Promise<Stream[]> {
+    const offset = options.offset ?? 0;
+    const limit = options.limit ?? Number.POSITIVE_INFINITY;
+
+    return [...this.streams.values()]
+      .filter((stream) => stream.status === 'LIVE')
+      .filter((stream) => stream.visibility === 'PUBLIC')
+      .sort((left, right) => {
+        const createdAtDiff =
+          right.createdAt.getTime() - left.createdAt.getTime();
+
+        return createdAtDiff || right.id.localeCompare(left.id);
+      })
+      .filter((stream) => {
+        if (!options.cursor) {
+          return true;
+        }
+
+        return (
+          stream.createdAt < options.cursor.createdAt ||
+          (stream.createdAt.getTime() === options.cursor.createdAt.getTime() &&
+            stream.id < options.cursor.id)
+        );
+      })
       .slice(offset, offset + limit);
   }
 

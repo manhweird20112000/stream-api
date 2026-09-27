@@ -7,8 +7,11 @@ import { CreateStreamKeyUseCase } from './application/use-cases/create-stream-ke
 import { CreateStreamUseCase } from './application/use-cases/create-stream.use-case';
 import {
   DeleteStreamUseCase,
+  EndStreamUseCase,
   GetStreamUseCase,
+  ListPublicLiveStreamsUseCase,
   ListStreamsUseCase,
+  PublishStreamUseCase,
   UpdateStreamUseCase,
 } from './application/use-cases/stream-crud.use-cases';
 import { VerifyStreamKeyUseCase } from './application/use-cases/verify-stream-key.use-case';
@@ -33,8 +36,11 @@ import { StreamsController } from './presentation/http/streams.controller';
     CreateStreamKeyUseCase,
     VerifyStreamKeyUseCase,
     ListStreamsUseCase,
+    ListPublicLiveStreamsUseCase,
     GetStreamUseCase,
     UpdateStreamUseCase,
+    PublishStreamUseCase,
+    EndStreamUseCase,
     DeleteStreamUseCase,
     JwtAuthGuard,
   ],

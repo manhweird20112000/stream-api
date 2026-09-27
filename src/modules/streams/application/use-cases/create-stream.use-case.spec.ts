@@ -8,6 +8,7 @@ describe('CreateStreamUseCase', () => {
       save: jest.fn(async (stream) => stream),
       findById: jest.fn(),
       findByOwnerUserId: jest.fn(),
+      findPublicLive: jest.fn(),
       delete: jest.fn(),
     };
     const useCase = new CreateStreamUseCase(repository);

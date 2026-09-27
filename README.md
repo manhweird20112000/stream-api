@@ -104,8 +104,12 @@ Example command envelope:
 ```http
 POST /api/streams
 GET /api/streams
+GET /api/streams?limit=20&cursor=<nextCursor>
+GET /api/streams/live?limit=20&cursor=<nextCursor>
 GET /api/streams/:id
 PATCH /api/streams/:id
+POST /api/streams/:id/publish
+POST /api/streams/:id/end
 DELETE /api/streams/:id
 Authorization: Bearer <jwt>
 Content-Type: application/json
@@ -120,6 +124,29 @@ Content-Type: application/json
 
 The service validates the request, verifies the JWT, and sends a
 `stream.create` command to Kafka.
+
+The authenticated stream list uses cursor pagination:
+
+```json
+{
+  "items": [],
+  "meta": {
+    "limit": 20,
+    "hasNextPage": false,
+    "nextCursor": null
+  }
+}
+```
+
+Public viewers can list currently live streams with
+`GET /api/streams/live`. It requires no bearer token and only returns streams
+where `status` is `LIVE` and `visibility` is `PUBLIC`.
+
+Publishing a stream moves a draft stream to `LIVE`, creates a `stream_sessions`
+row, records a `STREAM_PUBLISHED` event, and enforces one live stream per owner.
+If the owner has no active stream key, the service creates a new key internally
+and stores only its hash. Ending a stream moves it to `ENDED`, disconnects the
+live session when present, and records a `STREAM_ENDED` event.
 
 Stream key endpoints:
 
